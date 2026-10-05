@@ -1,0 +1,18 @@
+[package]
+name = "bindings"
+description = "wasm-bindgen boundary between the Rust solver and JavaScript."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+solver.workspace = true
+wasm-bindgen.workspace = true
+
+[lints]
+workspace = true
