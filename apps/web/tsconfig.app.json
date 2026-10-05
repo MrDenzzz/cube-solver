@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2024", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "types": ["vite/client"],
+    // CSS modules are typed as string maps; dot access to their class names is the point of them.
+    "noPropertyAccessFromIndexSignature": false
+  },
+  "include": ["src", "vite.config.ts"],
+  "exclude": ["src/**/*.worker.ts"]
+}

@@ -12,4 +12,10 @@ export default defineConfig({
   plugins: [react()],
   server: { headers: crossOriginIsolationHeaders },
   preview: { headers: crossOriginIsolationHeaders },
+  // The solver worker is a module worker; ES output lets it share chunks with the page.
+  worker: { format: 'es' },
+  build: {
+    // The largest chunk is three.js with React Three Fiber, loaded lazily after the page renders.
+    chunkSizeWarningLimit: 1000,
+  },
 });
