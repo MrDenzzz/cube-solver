@@ -54,3 +54,47 @@ jobs:
           restore-keys: turbo-${{ runner.os }}-
       - run: pnpm format:check
       - run: pnpm check
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-dist
+          path: apps/web/dist
+          retention-days: 7
+
+  deploy:
+    name: Deploy to cube.mrdenzzz.ru
+    needs: [rust, web]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    environment:
+      name: production
+      url: https://cube.mrdenzzz.ru
+    concurrency:
+      group: deploy-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: web-dist
+          path: dist
+      - name: Precompress for nginx gzip_static
+        run: >
+          find dist -type f \( -name '*.html' -o -name '*.js' -o -name '*.css' -o -name '*.wasm'
+          -o -name '*.svg' -o -name '*.json' \) -exec gzip -9 --keep --no-name {} +
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+      # The server pins this key to rrsync in the site directory, so "/" is that directory.
+      # Unchanged hashed assets are skipped by checksum; new files land together at the end and
+      # stale ones are removed only after that.
+      - name: Upload
+        run: >
+          rsync --recursive --links --checksum --compress --chmod=D755,F644
+          --delay-updates --delete-after
+          -e "ssh -i $HOME/.ssh/deploy_key -o IdentitiesOnly=yes"
+          dist/ deploy@cube.mrdenzzz.ru:/
