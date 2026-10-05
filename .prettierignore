@@ -4,3 +4,4 @@ packages/solver-wasm/pkg/
 **/dist/
 **/coverage/
 .turbo/
+tools/bench/results/
