@@ -1,4 +1,9 @@
 {
   "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // Search loops index typed arrays with coordinates that are in range by construction; the
+    // check would only add `?? 0` noise or runtime cost there. See docs/adr/0002.
+    "noUncheckedIndexedAccess": false
+  },
   "include": ["src"]
 }

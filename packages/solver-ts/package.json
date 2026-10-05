@@ -5,19 +5,23 @@
   "description": "TypeScript solvers: Kociemba two-phase, optimal IDA*, 4x4x4 reduction. Pruning tables in typed arrays.",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
   },
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "lint": "eslint .",
     "typecheck": "tsc",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
-    "@cube/core": "workspace:*",
-    "@cube/solver-contracts": "workspace:*"
+    "@cube/core": "workspace:*"
   },
   "devDependencies": {
     "eslint": "catalog:",
+    "fast-check": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

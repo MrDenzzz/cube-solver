@@ -344,13 +344,13 @@ importers:
       '@cube/core':
         specifier: workspace:*
         version: link:../cube-core
-      '@cube/solver-contracts':
-        specifier: workspace:*
-        version: link:../solver-contracts
     devDependencies:
       eslint:
         specifier: 'catalog:'
         version: 10.12.0(jiti@2.6.1)
+      fast-check:
+        specifier: 'catalog:'
+        version: 4.10.2
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
@@ -389,6 +389,13 @@ importers:
         version: 5.0.3(@types/node@24.19.1)(vite@8.3.2(@types/node@24.19.1)(jiti@2.6.1))
 
   tools/bench:
+    dependencies:
+      '@cube/core':
+        specifier: workspace:*
+        version: link:../../packages/cube-core
+      '@cube/solver-ts':
+        specifier: workspace:*
+        version: link:../../packages/solver-ts
     devDependencies:
       '@types/node':
         specifier: 'catalog:'

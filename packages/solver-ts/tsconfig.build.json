@@ -1,0 +1,16 @@
+{
+  // Compiled rather than consumed as source: its compiler options differ from the shared base, and
+  // a consumer type-checking these sources would apply its own instead.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
+    "rewriteRelativeImportExtensions": true,
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "rootDir": "src",
+    "outDir": "dist"
+  },
+  "exclude": ["src/**/*.test.ts"]
+}
