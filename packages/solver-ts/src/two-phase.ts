@@ -31,6 +31,10 @@ export interface TwoPhaseOptions {
   readonly timeLimitMs?: number;
   /** Polled during the search; returning true abandons it, even without a solution. */
   readonly shouldStop?: () => boolean;
+  /** Called about every thousand phase 1 nodes; throttle before doing anything costly. */
+  readonly onProgress?: (progress: TwoPhaseProgress) => void;
+  /** Called with each solution that is shorter than all found before it. */
+  readonly onImprovement?: (moves: readonly FaceTurn[]) => void;
   /**
    * 1 searches the cube as given; 6 also searches it rotated 120° and 240° about the URF–DBL
    * diagonal and the inverses of all three, interleaved by phase 1 depth.
@@ -39,6 +43,14 @@ export interface TwoPhaseOptions {
 }
 
 export type StopReason = 'target' | 'time' | 'cancelled' | 'exhausted';
+
+export interface TwoPhaseProgress {
+  /** Phase 1 depth being explored. */
+  readonly depth: number;
+  readonly bestLength: number | undefined;
+  readonly nodes: number;
+  readonly elapsedMs: number;
+}
 
 export interface TwoPhaseStats {
   readonly phase1Nodes: number;
@@ -169,11 +181,12 @@ export function createTwoPhaseSolver(tables: TwoPhaseTables): TwoPhaseSolve {
   return function solve(cube, options = {}) {
     const maxLength = options.maxLength ?? 20;
     const timeLimitMs = options.timeLimitMs ?? Number.POSITIVE_INFINITY;
-    const { shouldStop } = options;
+    const { shouldStop, onProgress, onImprovement } = options;
     const begin = performance.now();
 
     const starts = DIRECTIONS.slice(0, options.directions ?? 6).map((d) => startOf(cube, d));
     let current = starts[0];
+    let currentDepth = 0;
 
     const path = new Int8Array(PHASE1_DEPTH_LIMIT + PHASE2_MOVE_LIMIT);
     let best: { path: number[]; direction: Direction } | undefined;
@@ -184,8 +197,15 @@ export function createTwoPhaseSolver(tables: TwoPhaseTables): TwoPhaseSolve {
     let phase1Solutions = 0;
 
     function checkStop(): void {
+      const elapsedMs = performance.now() - begin;
+      onProgress?.({
+        depth: currentDepth,
+        bestLength: best === undefined ? undefined : bestLength,
+        nodes: phase1Nodes + phase2Nodes,
+        elapsedMs,
+      });
       if (shouldStop?.() === true) stoppedBy = 'cancelled';
-      else if (best !== undefined && performance.now() - begin > timeLimitMs) stoppedBy = 'time';
+      else if (best !== undefined && elapsedMs > timeLimitMs) stoppedBy = 'time';
     }
 
     // A node is only entered when its heuristic is below `togo`, so togo = 0 means solved.
@@ -239,6 +259,7 @@ export function createTwoPhaseSolver(tables: TwoPhaseTables): TwoPhaseSolve {
         if (phase2(corners, udEdges, slice, togo, lastFace, length)) {
           bestLength = length + togo;
           best = { path: Array.from(path.subarray(0, bestLength)), direction: current.direction };
+          onImprovement?.(toOriginal(best.path, best.direction));
           if (bestLength <= maxLength) stoppedBy = 'target';
           return;
         }
@@ -285,6 +306,7 @@ export function createTwoPhaseSolver(tables: TwoPhaseTables): TwoPhaseSolve {
         if (depth >= bestLength) break search;
         if (start.h > depth) continue;
         current = start;
+        currentDepth = depth;
         phase1(start.twist, start.flip, start.slice, start.h, depth, -1, 0);
         if (stoppedBy !== undefined) break search;
       }

@@ -59,6 +59,26 @@ describe('two-phase solver', { timeout: 30_000 }, () => {
     }
   });
 
+  it('reports progress and each shorter solution as it finds them', () => {
+    const cube = randomCube(Xoshiro128StarStar.fromSeed(5));
+    const improvements: number[] = [];
+    let progressCalls = 0;
+    const result = solve(cube, {
+      maxLength: 19,
+      timeLimitMs: 300,
+      onProgress: () => progressCalls++,
+      onImprovement: (moves) => {
+        expect(isSolved(applyFaceTurns(cube, moves))).toBe(true);
+        improvements.push(moves.length);
+      },
+    });
+    expect(progressCalls).toBeGreaterThan(0);
+    expect(improvements.length).toBeGreaterThan(0);
+    expect(improvements).toEqual([...improvements].sort((a, b) => b - a));
+    expect(new Set(improvements).size).toBe(improvements.length);
+    expect(improvements.at(-1)).toBe(result.moves?.length);
+  });
+
   it('stops at once when cancelled, without a solution', () => {
     const cube = randomCube(Xoshiro128StarStar.fromSeed(1));
     const result = solve(cube, { maxLength: 1, shouldStop: () => true });

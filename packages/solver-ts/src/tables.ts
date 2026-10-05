@@ -184,6 +184,9 @@ export interface TwoPhaseTables {
   readonly udEdgeSlicePrune: Uint8Array;
 }
 
+/** Number of tables {@link buildTwoPhaseTables} builds, for progress reporting. */
+export const TWO_PHASE_TABLE_COUNT = 14;
+
 export interface TableBuildStep {
   readonly name: keyof TwoPhaseTables;
   readonly bytes: number;

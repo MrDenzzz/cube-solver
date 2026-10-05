@@ -12,12 +12,14 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "lint": "eslint .",
     "typecheck": "tsc",
     "test": "vitest run"
   },
   "dependencies": {
-    "@cube/core": "workspace:*"
+    "@cube/core": "workspace:*",
+    "@cube/solver-contracts": "workspace:*"
   },
   "devDependencies": {
     "eslint": "catalog:",

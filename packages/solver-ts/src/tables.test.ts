@@ -33,11 +33,23 @@ import {
   setUDEdgePerm,
   setUEdges,
 } from './coordinates.ts';
-import { buildTwoPhaseTables, N_MOVES, PHASE2_MOVES, type TwoPhaseTables } from './tables.ts';
+import {
+  buildTwoPhaseTables,
+  N_MOVES,
+  PHASE2_MOVES,
+  TWO_PHASE_TABLE_COUNT,
+  type TwoPhaseTables,
+} from './tables.ts';
 
 let tables: TwoPhaseTables;
+let steps = 0;
 beforeAll(() => {
-  tables = buildTwoPhaseTables();
+  tables = buildTwoPhaseTables(() => steps++);
+});
+
+it('reports one build step per table', () => {
+  expect(steps).toBe(TWO_PHASE_TABLE_COUNT);
+  expect(Object.keys(tables)).toHaveLength(TWO_PHASE_TABLE_COUNT);
 });
 
 const rng = Xoshiro128StarStar.fromSeed(2026);
