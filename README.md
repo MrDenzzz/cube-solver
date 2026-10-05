@@ -1,0 +1,58 @@
+# cube-solver
+
+Rubik's cube 3×3×3 and 4×4×4 solver that runs entirely in the browser: Kociemba's two-phase
+algorithm, an optimal IDA\* solver and 4×4×4 reduction, each implemented twice — in TypeScript
+and in Rust compiled to WebAssembly — with a step-by-step 3D replay in React Three Fiber.
+
+> **Status:** work in progress. The monorepo scaffold and CI are in place; the solvers land
+> step by step (see [Roadmap](#roadmap)). Design research with sources:
+> [docs/research.md](docs/research.md).
+
+## Roadmap
+
+1. [x] Research: algorithms, table sizes, time and memory budgets
+2. [x] Monorepo scaffold, shared configs, CI
+3. [ ] `cube-core` for 3×3×3 with property-based tests
+4. [ ] Two-phase solver in TypeScript, CLI benchmark
+5. [ ] Web app: 3D cube, scramble input, solving in a Web Worker
+6. [ ] Optimal 3×3×3 solver; Rust/WASM port and TS vs WASM comparison
+7. [ ] 4×4×4 model and reduction solver
+8. [ ] Input by painting facelets and by camera
+9. [ ] Benchmarks page, deployment, final README and ADRs
+
+## Repository layout
+
+| Path                        | Purpose                                                                    |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `apps/web`                  | Vite + React app: 3D cube, state input, solver in a Web Worker, benchmarks |
+| `packages/cube-core`        | Cube model, moves, WCA notation, state validation; no runtime dependencies |
+| `packages/solver-contracts` | Solver interface and the worker message protocol (progress, cancellation)  |
+| `packages/solver-ts`        | Solvers in TypeScript, pruning tables in typed arrays                      |
+| `packages/solver-wasm`      | The same solvers in Rust (`crates/`), compiled to WebAssembly              |
+| `packages/test-fixtures`    | Fixtures shared by both engines: seeded scrambles, known optimal positions |
+| `tools/bench`               | CLI benchmarks over a fixed seeded scramble set; JSON and Markdown output  |
+| `tools/tablegen`            | Offline pruning-table generation and reference checksums                   |
+| `docs/adr`                  | Architecture decision records                                              |
+
+## Development
+
+Requirements:
+
+- Node.js 24 and pnpm (the version is pinned in `packageManager`)
+- Rust toolchain from `rust-toolchain.toml` (rustup installs it on first use)
+- wasm-bindgen CLI matching the crate version:
+  `cargo install wasm-bindgen-cli --version 0.2.129 --locked`
+
+```sh
+pnpm install
+pnpm check                    # lint, typecheck, test and build (including WASM) via Turborepo
+pnpm --filter @cube/web dev   # dev server with cross-origin isolation headers
+cargo test --workspace        # Rust unit tests
+```
+
+Commits follow [Conventional Commits](https://www.conventionalcommits.org/); a `commit-msg`
+hook checks them with commitlint.
+
+## License
+
+[MIT](LICENSE)
