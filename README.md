@@ -4,14 +4,17 @@ Rubik's cube 3×3×3 and 4×4×4 solver that runs entirely in the browser: Kocie
 algorithm, an optimal IDA\* solver and 4×4×4 reduction, each implemented twice — in TypeScript
 and in Rust compiled to WebAssembly — with a step-by-step 3D replay in React Three Fiber.
 
-> **Status:** work in progress. The monorepo scaffold and CI are in place; the solvers land
-> step by step (see [Roadmap](#roadmap)). Design research with sources:
+**Demo:** <https://cube.mrdenzzz.ru> (deployed from `main` on every green CI run, see
+[docs/deploy.md](docs/deploy.md)).
+
+> **Status:** work in progress. The monorepo scaffold, CI and deployment are in place; the solvers
+> land step by step (see [Roadmap](#roadmap)). Design research with sources:
 > [docs/research.md](docs/research.md).
 
 ## Roadmap
 
 1. [x] Research: algorithms, table sizes, time and memory budgets
-2. [x] Monorepo scaffold, shared configs, CI
+2. [x] Monorepo scaffold, shared configs, CI, deployment
 3. [ ] `cube-core` for 3×3×3 with property-based tests
 4. [ ] Two-phase solver in TypeScript, CLI benchmark
 5. [ ] Web app: 3D cube, scramble input, solving in a Web Worker
