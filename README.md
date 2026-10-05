@@ -15,13 +15,24 @@ and in Rust compiled to WebAssembly — with a step-by-step 3D replay in React T
 
 1. [x] Research: algorithms, table sizes, time and memory budgets
 2. [x] Monorepo scaffold, shared configs, CI, deployment
-3. [ ] `cube-core` for 3×3×3 with property-based tests
-4. [ ] Two-phase solver in TypeScript, CLI benchmark
+3. [x] `cube-core` for 3×3×3 with property-based tests
+4. [x] Two-phase solver in TypeScript, CLI benchmark
 5. [ ] Web app: 3D cube, scramble input, solving in a Web Worker
 6. [ ] Optimal 3×3×3 solver; Rust/WASM port and TS vs WASM comparison
 7. [ ] 4×4×4 model and reduction solver
 8. [ ] Input by painting facelets and by camera
 9. [ ] Benchmarks page, deployment, final README and ADRs
+
+## Benchmarks
+
+Two-phase solver, TypeScript, 1000 uniformly random states (seed 1), AMD Ryzen 7 9800X3D,
+Node 24, one thread. Tables: 12.35 MB, built in 0.45 s at start. Method and history:
+[ADR 0002](docs/adr/0002-two-phase-tables-and-search.md); raw data: [tools/bench](tools/bench).
+
+| Target     | Mean length | Mean   | Median | p95    | Max     |
+| ---------- | ----------- | ------ | ------ | ------ | ------- |
+| ≤ 21 moves | 20.12       | 7.9 ms | 5.2 ms | 23 ms  | 140 ms  |
+| ≤ 20 moves | 19.73       | 35 ms  | 5.6 ms | 145 ms | 2590 ms |
 
 ## Repository layout
 
