@@ -235,7 +235,10 @@ describe('pruning tables', () => {
         }
       }
     }
-    expect(tables.cornerSlicePrune).toEqual(expected);
+    // A plain loop: a deep equality check over a million entries is slow and unreadable when it fails.
+    const firstMismatch = expected.findIndex((depth, i) => tables.cornerSlicePrune[i] !== depth);
+    expect(firstMismatch).toBe(-1);
+    expect(tables.cornerSlicePrune.length).toBe(expected.length);
   });
 
   it('are zero exactly at the goal of each phase', () => {
