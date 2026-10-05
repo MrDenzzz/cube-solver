@@ -5,7 +5,8 @@ algorithm, an optimal IDA\* solver and 4×4×4 reduction, each implemented twice
 and in Rust compiled to WebAssembly — with a step-by-step 3D replay in React Three Fiber.
 
 **Demo:** <https://cube.mrdenzzz.ru> (deployed from `main` on every green CI run, see
-[docs/deploy.md](docs/deploy.md)).
+[docs/deploy.md](docs/deploy.md)). Type or generate a scramble, solve it in a Web Worker with live
+progress and cancellation, and replay the solution move by move in 3D, in English or Russian.
 
 > **Status:** work in progress. The monorepo scaffold, CI and deployment are in place; the solvers
 > land step by step (see [Roadmap](#roadmap)). Design research with sources:
@@ -17,7 +18,7 @@ and in Rust compiled to WebAssembly — with a step-by-step 3D replay in React T
 2. [x] Monorepo scaffold, shared configs, CI, deployment
 3. [x] `cube-core` for 3×3×3 with property-based tests
 4. [x] Two-phase solver in TypeScript, CLI benchmark
-5. [ ] Web app: 3D cube, scramble input, solving in a Web Worker
+5. [x] Web app: 3D cube, scramble input, solving in a Web Worker
 6. [ ] Optimal 3×3×3 solver; Rust/WASM port and TS vs WASM comparison
 7. [ ] 4×4×4 model and reduction solver
 8. [ ] Input by painting facelets and by camera
@@ -60,7 +61,7 @@ Requirements:
 ```sh
 pnpm install
 pnpm check                    # lint, typecheck, test and build (including WASM) via Turborepo
-pnpm --filter @cube/web dev   # dev server with cross-origin isolation headers
+pnpm turbo run dev --filter=@cube/web...   # dev server plus watch builds of its dependencies
 cargo test --workspace        # Rust unit tests
 ```
 
