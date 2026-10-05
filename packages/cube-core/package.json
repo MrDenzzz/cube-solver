@@ -1,0 +1,20 @@
+{
+  "name": "@cube/core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Cube model for 3x3x3 and 4x4x4: cubies, moves, WCA notation and state validation. No runtime dependencies.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint .",
+    "typecheck": "tsc",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
