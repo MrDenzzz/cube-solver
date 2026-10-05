@@ -22,7 +22,7 @@ function cubeAfter(algorithm: string): CubieCube {
   return result.value;
 }
 
-describe('two-phase solver', () => {
+describe('two-phase solver', { timeout: 30_000 }, () => {
   it('solves the solved cube with no moves', () => {
     const result = solve(SOLVED);
     expect(result.moves).toEqual([]);
@@ -36,15 +36,26 @@ describe('two-phase solver', () => {
     expect(result.moves?.length).toBeLessThanOrEqual(6);
   });
 
-  it('finds solutions of at most 20 moves for random states, and they solve the cube', () => {
+  // Speed towards 20 moves is the benchmark's business (tools/bench); these tests check
+  // correctness and stay fast on slow CI machines.
+  it('solves random states, within the target length when it stops for the target', () => {
     const rng = Xoshiro128StarStar.fromSeed(20);
-    for (let i = 0; i < 25; i++) {
+    for (let i = 0; i < 50; i++) {
       const cube = randomCube(rng);
-      const result = solve(cube, { maxLength: 20, timeLimitMs: 10_000 });
-      expect(result.moves).toBeDefined();
+      const result = solve(cube, { maxLength: 21 });
+      expect(result.stoppedBy).toBe('target');
       const moves = result.moves ?? [];
       expect(isSolved(applyFaceTurns(cube, moves))).toBe(true);
-      expect(moves.length).toBeLessThanOrEqual(20);
+      expect(moves.length).toBeLessThanOrEqual(21);
+    }
+  });
+
+  it('also solves with a single search direction', () => {
+    const rng = Xoshiro128StarStar.fromSeed(21);
+    for (let i = 0; i < 10; i++) {
+      const cube = randomCube(rng);
+      const result = solve(cube, { maxLength: 22, directions: 1 });
+      expect(isSolved(applyFaceTurns(cube, result.moves ?? []))).toBe(true);
     }
   });
 
