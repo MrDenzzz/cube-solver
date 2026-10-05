@@ -11,11 +11,14 @@ made and updated with measured numbers later. The format follows Michael Nygard'
 
 Background research for these decisions: [../research.md](../research.md).
 
+## Records
+
+- [0001. Cube state representation](0001-cube-state-representation.md) — Accepted
+
 ## Planned
 
 | ADR  | Topic                                                      | Step |
 | ---- | ---------------------------------------------------------- | ---- |
-| 0001 | Cube state representation                                  | 3    |
 | 0002 | Two-phase pruning tables: small (min2phase-style) vs large | 4    |
 | 0003 | Pruning-table storage: in-browser generation and OPFS      | 5    |
 | 0004 | Optimal solver: Reid/Kociemba heuristic vs Korf PDBs       | 6    |
