@@ -1,0 +1,16 @@
+node_modules/
+dist/
+coverage/
+.turbo/
+*.tsbuildinfo
+*.log
+
+# Rust build output and generated wasm-bindgen package
+target/
+packages/solver-wasm/pkg/
+
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
