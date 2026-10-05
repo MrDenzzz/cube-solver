@@ -17,7 +17,17 @@ export {
 } from './cubie.ts';
 export type { CubeError, CubeErrorCode } from './errors.ts';
 export { parseFacelets, SOLVED_FACELETS, toFacelets } from './facelets.ts';
-export { FACES, OPPOSITE, type Face } from './geometry.ts';
+export {
+  FACES,
+  faceNormal,
+  isFace,
+  OPPOSITE,
+  stickerAt,
+  stickerCount,
+  type Face,
+  type Sticker,
+  type Vec3,
+} from './geometry.ts';
 export {
   applyFaceTurn,
   applyFaceTurns,
