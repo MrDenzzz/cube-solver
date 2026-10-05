@@ -42,5 +42,6 @@ export {
   type ParsedMove,
 } from './notation.ts';
 export { nextBelow, randomCube, Xoshiro128StarStar, type Rng } from './random.ts';
+export { rotateCube, rotateFace } from './rotation.ts';
 export type { Result } from './util.ts';
 export { validateCubie } from './validation.ts';
