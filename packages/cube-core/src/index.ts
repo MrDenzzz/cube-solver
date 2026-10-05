@@ -1,3 +1,4 @@
+export { applyAlgorithm, expandTo3x3, toLayerTurn, type LayerTurn } from './algorithm.ts';
 export {
   CORNER_FACELETS,
   CORNER_FACES,
@@ -31,5 +32,14 @@ export {
   type FaceTurn,
   type Turns,
 } from './moves.ts';
+export {
+  formatAlgorithm,
+  formatMove,
+  parseAlgorithm,
+  type Move,
+  type NotationError,
+  type NotationMode,
+  type ParsedMove,
+} from './notation.ts';
 export type { Result } from './util.ts';
 export { validateCubie } from './validation.ts';
