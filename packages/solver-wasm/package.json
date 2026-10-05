@@ -1,0 +1,24 @@
+{
+  "name": "@cube/solver-wasm",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Rust solvers compiled to WebAssembly, exposed through the same interface as @cube/solver-ts.",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./solver.wasm": "./pkg/solver_bg.wasm"
+  },
+  "scripts": {
+    "build": "node scripts/build-wasm.ts",
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.lib.json && tsc -p tsconfig.node.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "binaryen": "catalog:",
+    "eslint": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
