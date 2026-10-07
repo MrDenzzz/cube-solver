@@ -22,9 +22,4 @@ Background research for these decisions: [../research.md](../research.md).
 - [0007. TypeScript vs WebAssembly, and threads](0007-typescript-vs-webassembly.md) — Accepted
 - [0008. 4×4×4: three-phase reduction with an exact edge-pairing table](0008-four-by-four-reduction.md) — Accepted
 - [0009. Camera input: one face at a time, CIEDE2000 and balanced groups](0009-camera-input.md) — Accepted
-
-## Planned
-
-| ADR  | Topic                              | Step |
-| ---- | ---------------------------------- | ---- |
-| 0010 | Hosting and cross-origin isolation | 9    |
+- [0010. Hosting: nginx on our own server, for cross-origin isolation](0010-hosting.md) — Accepted
