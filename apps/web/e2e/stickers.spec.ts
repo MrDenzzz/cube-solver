@@ -30,17 +30,3 @@ test('types a cube in, flags a wrong sticker and solves the fixed cube', async (
   await page.getByRole('button', { name: 'Solve', exact: true }).click();
   await expect(page.getByText('The cube is already solved.')).toBeVisible();
 });
-
-test('scans six faces with the camera into the editor', async ({ page }) => {
-  await page.getByRole('button', { name: 'Scan with the camera' }).click();
-  // Chrome's fake camera: a moving test pattern, so the colours are nonsense but balanced.
-  await expect
-    .poll(() => page.locator('video').evaluate((video: HTMLVideoElement) => video.videoWidth))
-    .toBeGreaterThan(0);
-  for (let i = 0; i < 6; i++)
-    await page.getByRole('button', { name: 'Capture', exact: true }).click();
-  await expect(page.getByText('Faces captured: 6 of 6')).toBeVisible();
-  await page.getByRole('button', { name: 'Use the colours' }).click();
-  await expect(page.getByRole('group', { name: 'Unfolded cube' })).toBeVisible();
-  await expect(page.getByRole('radio', { name: /: 9 of 9$/ })).toHaveCount(6);
-});

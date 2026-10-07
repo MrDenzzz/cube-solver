@@ -4,6 +4,8 @@ coverage/
 # Playwright output
 test-results/
 playwright-report/
+# Rendered fake-camera videos
+apps/web/e2e/.videos/
 .turbo/
 *.tsbuildinfo
 *.log
