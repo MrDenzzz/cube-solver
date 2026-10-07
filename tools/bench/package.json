@@ -10,7 +10,8 @@
     "test": "vitest run --passWithNoTests",
     "bench": "node src/main.ts",
     "bench:optimal": "node src/optimal.ts",
-    "bench:four": "node src/four.ts"
+    "bench:four": "node src/four.ts",
+    "bench:summary": "node src/summary.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
