@@ -221,6 +221,49 @@ const en = {
   'guide.back': 'Back',
   'guide.done': 'Solved in {moves}.',
   'view.reset': 'Reset the view',
+  'nav.label': 'Pages',
+  'nav.solver': 'Solver',
+  'nav.bench': 'Benchmarks',
+  'bench.intro':
+    'How fast the solvers are: run them on this device, and compare with the numbers recorded on a desktop. Every solution is checked before it counts.',
+  'bench.live.title': 'On this device',
+  'bench.live.device': '{cores} logical cores; cross-origin isolation {isolation}.',
+  'bench.live.isolated': 'on, so the optimal search can use threads',
+  'bench.live.notIsolated': 'off, so searches run on one thread',
+  'bench.live.note':
+    'The same random states as the first ones of the recorded runs, solved in the page’s solver worker with the same settings.',
+  'bench.live.run3': '3×3×3 fast mode, {count} cubes',
+  'bench.live.run4': '4×4×4, {count} cubes',
+  'bench.live.running': 'Solving {done} of {total}…',
+  'bench.live.result': '{count} cubes: {length} moves on average, median {median}, slowest {max}.',
+  'bench.live.reference':
+    'Recorded on the desktop: {length} moves on average, median {median} over {count} cubes.',
+  'bench.recorded.title': 'Recorded on a desktop',
+  'bench.recorded.machine':
+    '{cpu}, Node {node}. Raw results and the scripts that make them are in tools/bench.',
+  'bench.twoPhase.title': '3×3×3 fast mode: two-phase, random states',
+  'bench.optimal.title':
+    '3×3×3 optimal search: Kociemba’s ten random positions, every length through 16',
+  'bench.optimal.note':
+    'The same nodes in every run; WebAssembly is 1.8 times TypeScript per thread, and threads beat both.',
+  'bench.reduction.title': '4×4×4 reduction: random states',
+  'bench.reduction.note':
+    'More candidates buy shorter solutions with time; the default is 100 / 4 with 50 ms per 3×3×3 finish.',
+  'bench.tier.standard': 'Standard, 35 MB',
+  'bench.tier.huge': 'Huge, 0.9 GB',
+  'bench.col.target': 'Stop at',
+  'bench.col.cubes': 'Cubes',
+  'bench.col.length': 'Mean length',
+  'bench.col.median': 'Median',
+  'bench.col.p95': '95th percentile',
+  'bench.col.max': 'Slowest',
+  'bench.col.nodes': 'Nodes/s',
+  'bench.col.table': 'Table',
+  'bench.col.engine': 'Engine',
+  'bench.col.threads': 'Threads',
+  'bench.col.time': 'Time',
+  'bench.col.candidates': 'Candidates, phase 2 / 3, finish',
+  'bench.col.phases': 'Phases',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -445,6 +488,50 @@ const ru: Record<MessageKey, string> = {
   'guide.back': 'Назад',
   'guide.done': 'Собрано за {moves}.',
   'view.reset': 'Вернуть вид',
+  'nav.label': 'Страницы',
+  'nav.solver': 'Солвер',
+  'nav.bench': 'Бенчмарки',
+  'bench.intro':
+    'Насколько быстры солверы: запустите их на этом устройстве и сравните с числами, записанными на настольном компьютере. Каждое решение проверяется, прежде чем попасть в счёт.',
+  'bench.live.title': 'На этом устройстве',
+  'bench.live.device': 'Логических ядер: {cores}; изоляция источника {isolation}.',
+  'bench.live.isolated': 'включена, оптимальный поиск может работать в несколько потоков',
+  'bench.live.notIsolated': 'выключена, поиск идёт в один поток',
+  'bench.live.note':
+    'Те же случайные состояния, что первыми шли в записанных прогонах, решённые воркером солвера на этой странице с теми же настройками.',
+  'bench.live.run3': '3×3×3, быстрый режим, кубиков: {count}',
+  'bench.live.run4': '4×4×4, кубиков: {count}',
+  'bench.live.running': 'Решаю {done} из {total}…',
+  'bench.live.result':
+    'Кубиков: {count}. В среднем {length} хода, медиана {median}, дольше всего {max}.',
+  'bench.live.reference':
+    'На настольном компьютере: в среднем {length} хода, медиана {median} на {count} кубиках.',
+  'bench.recorded.title': 'Записано на настольном компьютере',
+  'bench.recorded.machine':
+    '{cpu}, Node {node}. Сырые результаты и скрипты, которые их получают, лежат в tools/bench.',
+  'bench.twoPhase.title': '3×3×3, быстрый режим: двухфазный алгоритм, случайные состояния',
+  'bench.optimal.title':
+    '3×3×3, оптимальный поиск: десять случайных позиций Коцембы, все длины до 16',
+  'bench.optimal.note':
+    'Во всех прогонах одни и те же узлы; WebAssembly в 1,8 раза быстрее TypeScript на поток, а потоки обгоняют обоих.',
+  'bench.reduction.title': '4×4×4, редукция: случайные состояния',
+  'bench.reduction.note':
+    'Больше кандидатов — короче решения, но дольше поиск; по умолчанию 100 / 4 и 50 мс на добор 3×3×3.',
+  'bench.tier.standard': 'Стандартная, 35 МБ',
+  'bench.tier.huge': 'Большая, 0,9 ГБ',
+  'bench.col.target': 'Остановка',
+  'bench.col.cubes': 'Кубиков',
+  'bench.col.length': 'Средняя длина',
+  'bench.col.median': 'Медиана',
+  'bench.col.p95': '95-й перцентиль',
+  'bench.col.max': 'Дольше всего',
+  'bench.col.nodes': 'Узлов/с',
+  'bench.col.table': 'Таблица',
+  'bench.col.engine': 'Движок',
+  'bench.col.threads': 'Потоков',
+  'bench.col.time': 'Время',
+  'bench.col.candidates': 'Кандидатов в фазах 2 / 3, добор',
+  'bench.col.phases': 'Фазы',
 };
 
 export const MESSAGES: Readonly<Record<Language, Readonly<Record<MessageKey, string>>>> = {

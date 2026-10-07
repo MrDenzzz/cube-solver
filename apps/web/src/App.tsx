@@ -61,7 +61,7 @@ import {
   isStickers,
   type PuzzleSize,
 } from './stickers/stickers.ts';
-import { LanguageSwitch } from './ui/LanguageSwitch.tsx';
+import { Header } from './ui/Header.tsx';
 import { readStored, writeStored } from './ui/storage.ts';
 import { useWakeLock } from './ui/useWakeLock.ts';
 
@@ -69,7 +69,6 @@ import { useWakeLock } from './ui/useWakeLock.ts';
 const CubeView = lazy(() => import('./cube3d/CubeView.tsx'));
 
 const QUARTER_TURN_MS = 320;
-const REPOSITORY = 'https://github.com/MrDenzzz/cube-solver';
 const STICKERS_KEYS: Readonly<Record<PuzzleSize, string>> = {
   3: 'cube-solver.stickers',
   4: 'cube-solver.stickers4',
@@ -324,25 +323,7 @@ export function App() {
 
   return (
     <div className={styles.app}>
-      <header className={styles.header}>
-        <div>
-          <h1 className={styles.title}>{t('app.title')}</h1>
-          <p className={styles.subtitle}>{t('app.subtitle')}</p>
-        </div>
-        <div className={styles.headerActions}>
-          <LanguageSwitch />
-          <a
-            className={styles.link}
-            href={REPOSITORY}
-            target="_blank"
-            rel="noreferrer"
-            title={t('app.source')}
-            aria-label={t('app.source')}
-          >
-            GitHub
-          </a>
-        </div>
-      </header>
+      <Header page="solver" />
       <main className={styles.main}>
         <section className={styles.stage} ref={stage}>
           <div className={styles.canvas}>

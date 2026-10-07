@@ -1,0 +1,164 @@
+{
+  "machine": {
+    "cpu": "AMD Ryzen 7 9800X3D 8-Core Processor",
+    "node": "v24.14.1"
+  },
+  "twoPhase": [
+    {
+      "count": 1000,
+      "maxLength": 20,
+      "meanLength": 19.73,
+      "reachedTarget": 1000,
+      "medianMs": 5.55,
+      "p95Ms": 144.52,
+      "maxMs": 2590.35,
+      "nodesPerSecond": 6111091
+    },
+    {
+      "count": 1000,
+      "maxLength": 21,
+      "meanLength": 20.12,
+      "reachedTarget": 1000,
+      "medianMs": 5.18,
+      "p95Ms": 22.61,
+      "maxMs": 139.84,
+      "nodesPerSecond": 12659927
+    }
+  ],
+  "optimal": [
+    {
+      "engine": "ts",
+      "tier": "huge",
+      "threads": 1,
+      "ms": 48145,
+      "nodes": 240227325,
+      "nodesPerSecond": 4989663
+    },
+    {
+      "engine": "ts",
+      "tier": "huge",
+      "threads": 1,
+      "ms": 48286,
+      "nodes": 240227325,
+      "nodesPerSecond": 4975093
+    },
+    {
+      "engine": "wasm",
+      "tier": "huge",
+      "threads": 1,
+      "ms": 27049,
+      "nodes": 240227325,
+      "nodesPerSecond": 8881191
+    },
+    {
+      "engine": "wasm",
+      "tier": "huge",
+      "threads": 1,
+      "ms": 27181,
+      "nodes": 240227325,
+      "nodesPerSecond": 8838061
+    },
+    {
+      "engine": "ts",
+      "tier": "huge",
+      "threads": 16,
+      "ms": 3574,
+      "nodes": 240227325,
+      "nodesPerSecond": 67215256
+    },
+    {
+      "engine": "ts",
+      "tier": "standard",
+      "threads": 1,
+      "ms": 106219,
+      "nodes": 1935824526,
+      "nodesPerSecond": 18224842
+    },
+    {
+      "engine": "ts",
+      "tier": "standard",
+      "threads": 1,
+      "ms": 106423,
+      "nodes": 1935824526,
+      "nodesPerSecond": 18189908
+    },
+    {
+      "engine": "wasm",
+      "tier": "standard",
+      "threads": 1,
+      "ms": 58331,
+      "nodes": 1935824526,
+      "nodesPerSecond": 33186891
+    },
+    {
+      "engine": "wasm",
+      "tier": "standard",
+      "threads": 1,
+      "ms": 60794,
+      "nodes": 1935824526,
+      "nodesPerSecond": 31842362
+    },
+    {
+      "engine": "ts",
+      "tier": "standard",
+      "threads": 8,
+      "ms": 11911,
+      "nodes": 1935824526,
+      "nodesPerSecond": 162524098
+    },
+    {
+      "engine": "ts",
+      "tier": "standard",
+      "threads": 16,
+      "ms": 9151,
+      "nodes": 1935824526,
+      "nodesPerSecond": 211542403
+    }
+  ],
+  "reduction": [
+    {
+      "count": 200,
+      "phase2Candidates": 20,
+      "phase3Candidates": 1,
+      "finishTimeMs": 50,
+      "meanLength": 46.05,
+      "meanPhaseLengths": [6.89, 6.29, 13.35, 19.52],
+      "medianMs": 168.71,
+      "p95Ms": 463,
+      "maxMs": 1335.23
+    },
+    {
+      "count": 200,
+      "phase2Candidates": 100,
+      "phase3Candidates": 1,
+      "finishTimeMs": 50,
+      "meanLength": 45.76,
+      "meanPhaseLengths": [6.92, 6.43, 12.91, 19.5],
+      "medianMs": 247.92,
+      "p95Ms": 641.86,
+      "maxMs": 1510.46
+    },
+    {
+      "count": 200,
+      "phase2Candidates": 100,
+      "phase3Candidates": 4,
+      "finishTimeMs": 50,
+      "meanLength": 45.19,
+      "meanPhaseLengths": [6.92, 6.46, 12.97, 18.84],
+      "medianMs": 620.82,
+      "p95Ms": 1390.94,
+      "maxMs": 1997.67
+    },
+    {
+      "count": 200,
+      "phase2Candidates": 100,
+      "phase3Candidates": 8,
+      "finishTimeMs": 30,
+      "meanLength": 45.17,
+      "meanPhaseLengths": [6.89, 6.54, 13.05, 18.7],
+      "medianMs": 985.36,
+      "p95Ms": 2175.13,
+      "maxMs": 4403
+    }
+  ]
+}
