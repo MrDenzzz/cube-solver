@@ -2,6 +2,7 @@ import type { OptimalTier } from '@cube/solver-contracts';
 import { useI18n } from '../i18n/i18n.ts';
 import type { OptimalStatus, SolverStatus } from '../solver/client.ts';
 import { MODES, optimalReady, type SolveSettings } from '../solver/settings.ts';
+import { ENGINE_KINDS, type EngineKind } from '../solver/solver.ts';
 import type { SolveSession } from '../solver/useSolveSession.ts';
 import { cx } from '../ui/cx.ts';
 import styles from '../ui/ui.module.css';
@@ -151,7 +152,15 @@ function SessionLine({ session }: { readonly session: SolveSession }) {
   }
 }
 
+/** Threads the TypeScript engine's optimal search uses: see solver.worker.ts. */
+function optimalThreads(): number {
+  if (!crossOriginIsolated) return 1;
+  return Math.max(1, Math.min(navigator.hardwareConcurrency - 1, 16));
+}
+
 export function SolvePanel({
+  engine,
+  onEngineChange,
   status,
   optimalStatus,
   session,
@@ -162,6 +171,8 @@ export function SolvePanel({
   onSolve,
   onCancel,
 }: {
+  readonly engine: EngineKind;
+  readonly onEngineChange: (engine: EngineKind) => void;
   readonly status: SolverStatus;
   readonly optimalStatus: OptimalStatus;
   readonly session: SolveSession;
@@ -194,6 +205,25 @@ export function SolvePanel({
               }}
             >
               {t(`solve.mode.${mode}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className={styles.row}>
+        <span className={styles.muted}>{t('solve.engine')}</span>
+        <div className={styles.segmented} role="group" aria-label={t('solve.engine')}>
+          {ENGINE_KINDS.map((kind) => (
+            <button
+              key={kind}
+              type="button"
+              className={styles.segment}
+              aria-pressed={engine === kind}
+              disabled={solving || optimalStatus.kind === 'preparing'}
+              onClick={() => {
+                onEngineChange(kind);
+              }}
+            >
+              {t(`solve.engine.${kind}`)}
             </button>
           ))}
         </div>
@@ -253,7 +283,12 @@ export function SolvePanel({
               ))}
             </select>
           </label>
-          <p className={styles.muted}>{t('solve.optimal.note')}</p>
+          <p className={styles.muted}>
+            {t('solve.optimal.note')}{' '}
+            {engine === 'wasm'
+              ? t('solve.threads.wasm')
+              : t('solve.threads.typescript', { threads: optimalThreads() })}
+          </p>
           <OptimalStatusLine
             status={optimalStatus}
             tier={settings.tier}

@@ -91,6 +91,12 @@ const en = {
   'solve.best': 'best so far: {moves}',
   'solve.result': '{moves} found in {ms} ms, {nodes} nodes searched',
   'solve.mode': 'Mode',
+  'solve.engine': 'Engine',
+  'solve.engine.typescript': 'TypeScript',
+  'solve.engine.wasm': 'WebAssembly',
+  'solve.threads.typescript':
+    'The optimal search uses {threads} threads; tables live in shared memory.',
+  'solve.threads.wasm': 'Rust compiled to WebAssembly; the optimal search uses one thread.',
   'solve.mode.fast': 'Fast',
   'solve.mode.optimal': 'Optimal',
   'solve.tier': 'Table',
@@ -261,6 +267,13 @@ const ru: Record<MessageKey, string> = {
   'solve.best': 'лучшее пока: {moves}',
   'solve.result': '{moves} за {ms} мс, просмотрено узлов: {nodes}',
   'solve.mode': 'Режим',
+  'solve.engine': 'Движок',
+  'solve.engine.typescript': 'TypeScript',
+  'solve.engine.wasm': 'WebAssembly',
+  'solve.threads.typescript':
+    'Оптимальный поиск идёт в {threads} потоках, таблицы лежат в общей памяти.',
+  'solve.threads.wasm':
+    'Rust, скомпилированный в WebAssembly; оптимальный поиск идёт в одном потоке.',
   'solve.mode.fast': 'Быстро',
   'solve.mode.optimal': 'Оптимально',
   'solve.tier': 'Таблица',

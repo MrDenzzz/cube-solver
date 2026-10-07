@@ -151,3 +151,15 @@ export async function createWasmEngine(module: InitInput): Promise<WasmEngine> {
 }
 
 export { engineVersion };
+
+/** The raw bindings, for benchmarks that drive one search directly. */
+export { Engine, type SearchCallbacks } from '../pkg/solver.js';
+
+/**
+ * Instantiates the module for the raw bindings and returns its memory, typed structurally so that
+ * Node code without the DOM library can use it.
+ */
+export async function initWasm(module: InitInput): Promise<{ readonly buffer: ArrayBuffer }> {
+  const { memory } = await init({ module_or_path: module });
+  return memory;
+}

@@ -35,7 +35,14 @@ import {
 } from './playback/playback.ts';
 import type { Handle } from './solver/client.ts';
 import { toSolveOptions, type SolveSettings } from './solver/settings.ts';
-import { getSolverClient, useOptimalStatus, useSolverStatus } from './solver/solver.ts';
+import {
+  getSolverClient,
+  setEngineKind,
+  useEngineKind,
+  useOptimalStatus,
+  useSolverStatus,
+  type EngineKind,
+} from './solver/solver.ts';
 import { randomScramble, useSolveSession } from './solver/useSolveSession.ts';
 import { StickerEditor } from './stickers/StickerEditor.tsx';
 import { BLANK_STICKERS, checkStickers, isStickers } from './stickers/stickers.ts';
@@ -68,6 +75,7 @@ export function App() {
   const [stickers, setStickers] = useState(storedStickers);
   const [playback, dispatch] = useReducer(playbackReducer, INITIAL_PLAYBACK);
   const optimalStatus = useOptimalStatus();
+  const engine = useEngineKind();
   const [settings, setSettings] = useState<SolveSettings>({
     mode: 'fast',
     maxLength: 20,
@@ -281,6 +289,13 @@ export function App() {
             )}
           </InputPanel>
           <SolvePanel
+            engine={engine}
+            onEngineChange={(next: EngineKind) => {
+              // The old worker goes away with its requests; drop the session first.
+              reset();
+              preparing.current = null;
+              setEngineKind(next);
+            }}
             status={status}
             optimalStatus={optimalStatus}
             session={session}

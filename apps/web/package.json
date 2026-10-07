@@ -16,6 +16,7 @@
     "@cube/core": "workspace:*",
     "@cube/solver-contracts": "workspace:*",
     "@cube/solver-ts": "workspace:*",
+    "@cube/solver-wasm": "workspace:*",
     "@react-three/fiber": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

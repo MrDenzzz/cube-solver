@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@cube/core": "workspace:*",
-    "@cube/solver-ts": "workspace:*"
+    "@cube/solver-ts": "workspace:*",
+    "@cube/solver-wasm": "workspace:*"
   }
 }
