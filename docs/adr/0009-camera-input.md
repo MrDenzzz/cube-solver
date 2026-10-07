@@ -22,14 +22,15 @@
   read 8 times a second at 240 px. Each cell's middle 40 % is reduced to the per-channel median,
   which ignores glare spots. The preview is not mirrored, so a picture's left is the face's left.
 - **Choosing the camera.** On a phone or tablet (a coarse pointer) the rear camera is asked for;
-  on a computer, the browser's own choice. A camera picked from the list is remembered. The
-  size, up to 1280×720, is applied to the open track, never asked for when opening: both a size
-  and a facing mode make Chrome prefer whichever camera matches them. On a desktop with seven
-  cameras that picked one that failed with `NotReadableError`, then, with the size moved after
-  opening, one that opened but sent no picture, while the webcam chosen in Chrome's settings
-  worked. If a picked camera is gone or the first choice will not start, the browser's default
-  is asked. A camera that still fails, or sends no picture within 4 s or only black for 3 s,
-  gets an explanation, a button to try again and the list of cameras.
+  on a computer, the browser's own choice, and a camera picked from the list is remembered. No
+  size is asked for: the camera's own is plenty for a grid read at 240 px. On a desktop with seven
+  cameras (a phone linked as a Windows camera, headset and virtual cameras), asking for 1280×720
+  made the webcam fail to start with `NotReadableError`; applied to the running stream instead,
+  it stopped the webcam after a second and left it held by the browser until the tab closed;
+  and asking for a rear camera picked one that sent no picture. Chrome's own preview, at the
+  default size, worked throughout. If a picked camera is gone or the first choice will not
+  start, the browser's default is asked. A camera that still fails, stops, or sends no picture
+  within 4 s or only black for 3 s gets an explanation, a button to try again and the list.
 - **Taking a face by itself.** A face is taken when every cell but one is one colour (the 10th
   to 90th percentile spread of each channel stays under 45), at least 60 % of the borders between
   cells have a dark line across them (the gaps between pieces; a wall or a face half out of the

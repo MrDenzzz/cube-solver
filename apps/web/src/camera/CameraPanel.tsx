@@ -15,7 +15,8 @@ type CameraState =
   | { readonly kind: 'live'; readonly width: number; readonly height: number }
   | {
       readonly kind: 'error';
-      readonly reason: 'denied' | 'missing' | 'busy' | 'dark' | 'unsupported' | 'failed';
+      readonly reason:
+        'denied' | 'missing' | 'busy' | 'dark' | 'stopped' | 'unsupported' | 'failed';
       readonly message: string;
     };
 
@@ -23,12 +24,12 @@ type CameraState =
 const READ_EVERY_MS = 125;
 const READ_SIDE = 240;
 
-/** The size asked of the camera once it is open. */
-const PREFERRED = { width: { ideal: 1280 }, height: { ideal: 720 } } as const;
 /** How long a camera may take to send its first picture. */
 const FIRST_PICTURE_MS = 4000;
 /** Readings in a row that are all but black before the camera is reported as dark: 3 s. */
 const DARK_READINGS = 24;
+/** Smaller than this is no picture: a stopped camera can leave a video of a few pixels. */
+const MIN_PICTURE = 32;
 const CAMERA_KEY = 'cube-solver.camera';
 
 /**
@@ -39,10 +40,11 @@ const CAMERA_KEY = 'cube-solver.camera';
 const hasRearCamera = () => matchMedia('(pointer: coarse)').matches;
 
 /**
- * Opens a camera: the one picked, else the rear one on a phone, else the browser's default.
- * The size is asked for only after the device is open: as a wish when opening, it makes Chrome
- * prefer whichever camera offers it, which can be one that is not running. If the first choice
- * will not start, or the picked camera is gone, the browser's default is asked.
+ * Opens a camera: the one picked, else the rear one on a phone, else the browser's default. No
+ * size is asked for: the camera's own is plenty for a grid read at 240 px, and asking a webcam
+ * for 1280×720 made it fail to start, or stop a second later when applied to a running stream.
+ * If the first choice will not start, or the picked camera is gone, the browser's default is
+ * asked.
  */
 async function openCamera(deviceId: string | null): Promise<MediaStream> {
   const first: MediaTrackConstraints | true =
@@ -60,18 +62,16 @@ async function openCamera(deviceId: string | null): Promise<MediaStream> {
     if (first === true || !retry) throw error;
     stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
   }
-  // A camera that cannot do the size keeps its own: the reading works at any size.
-  await stream
-    .getVideoTracks()[0]
-    ?.applyConstraints(PREFERRED)
-    .catch(() => undefined);
   return stream;
 }
 
-/** Whether the video gets a picture of some size within FIRST_PICTURE_MS. */
+const hasPicture = (element: HTMLVideoElement) =>
+  element.videoWidth >= MIN_PICTURE && element.videoHeight >= MIN_PICTURE;
+
+/** Whether the video gets a picture within FIRST_PICTURE_MS. */
 function firstPicture(element: HTMLVideoElement): Promise<boolean> {
   return new Promise((resolve) => {
-    if (element.videoWidth > 0) {
+    if (hasPicture(element)) {
       resolve(true);
       return;
     }
@@ -81,7 +81,7 @@ function firstPicture(element: HTMLVideoElement): Promise<boolean> {
       resolve(ok);
     };
     const onResize = () => {
-      if (element.videoWidth > 0) done(true);
+      if (hasPicture(element)) done(true);
     };
     const timer = setTimeout(() => {
       done(false);
@@ -163,17 +163,25 @@ export function CameraPanel({
         () => undefined,
       );
     };
-    // The size can change after the camera starts.
+    // The size can change after the camera starts, and collapse when it stops.
     const onResize = () => {
-      if (element.videoWidth > 0) {
+      if (hasPicture(element)) {
         setCamera({ kind: 'live', width: element.videoWidth, height: element.videoHeight });
+      } else {
+        setCamera({ kind: 'error', reason: 'stopped', message: '' });
       }
+    };
+    const onEnded = () => {
+      if (!stopped()) setCamera({ kind: 'error', reason: 'stopped', message: '' });
     };
     openCamera(attempt.deviceId)
       .then(async (opened) => {
         stream = opened;
         if (stopped()) return;
-        setActive(opened.getVideoTracks()[0]?.getSettings().deviceId ?? null);
+        const track = opened.getVideoTracks()[0];
+        setActive(track?.getSettings().deviceId ?? null);
+        // A camera can stop by itself: unplugged, or taken by another program.
+        track?.addEventListener('ended', onEnded);
         element.srcObject = opened;
         // Not awaited: on a stream that never sends a frame it would never settle.
         element.play().catch(() => undefined);
