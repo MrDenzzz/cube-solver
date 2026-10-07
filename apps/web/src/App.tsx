@@ -151,8 +151,15 @@ export function App() {
     preparing.current?.cancel();
     const handle = getSolverClient().prepare(tier);
     preparing.current = handle;
-    // Failures show up in the optimal status; the promise has nothing more to say.
-    handle.result.catch(() => undefined);
+    handle.result.then(
+      (report) => {
+        // A built table cost seconds to minutes: ask the browser not to evict it under storage
+        // pressure (only pages can ask; workers cannot). Refusal leaves it best-effort.
+        if (report?.source === 'built') void navigator.storage.persist().catch(() => false);
+      },
+      // Failures show up in the optimal status; the promise has nothing more to say.
+      () => undefined,
+    );
   }, []);
 
   // The standard table takes seconds and is then cached, so choosing the mode is enough to start
