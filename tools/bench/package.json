@@ -8,7 +8,8 @@
     "lint": "eslint .",
     "typecheck": "tsc",
     "test": "vitest run --passWithNoTests",
-    "bench": "node src/main.ts"
+    "bench": "node src/main.ts",
+    "bench:optimal": "node src/optimal.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
