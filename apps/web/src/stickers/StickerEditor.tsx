@@ -66,6 +66,7 @@ export function StickerEditor({
   const [brush, setBrush] = useState<Face>('U');
   const [cursor, setCursor] = useState(firstFront);
   const [scanning, setScanning] = useState(false);
+  const [scanNotice, setScanNotice] = useState(false);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const counts = colourCounts(stickers);
   const highlighted = useMemo(
@@ -115,8 +116,9 @@ export function StickerEditor({
       <Suspense fallback={<p className={ui.muted}>{t('camera.starting')}</p>}>
         <CameraPanel
           size={size}
-          onApply={(scanned) => {
+          onApply={({ stickers: scanned, ambiguous }) => {
             onChange(scanned);
+            setScanNotice(ambiguous);
             setScanning(false);
           }}
           onClose={() => {
@@ -207,6 +209,7 @@ export function StickerEditor({
         ))}
       </div>
 
+      {scanNotice && <p className={ui.status}>{t('camera.ambiguous')}</p>}
       <StickerStatus check={check} />
       <p className={cx(ui.muted, styles.keys)}>{t('stickers.keys')}</p>
       <div className={ui.row}>

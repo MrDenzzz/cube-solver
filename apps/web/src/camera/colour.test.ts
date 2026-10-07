@@ -10,8 +10,8 @@ import {
 } from '@cube/core';
 import { describe, expect, it } from 'vitest';
 import { FACE_COLOURS } from '../scheme.ts';
-import { ciede2000, classifyStickers, paletteLab, srgbToLab, type Lab } from './colour.ts';
-import { sampleGrid } from './sample.ts';
+import { ciede2000, classifyFaces, paletteLab, srgbToLab, type Lab } from './colour.ts';
+import { SEEN } from './synthetic.ts';
 
 // Table I of G. Sharma, W. Wu, E. N. Dalal, "The CIEDE2000 Color-Difference Formula:
 // Implementation Notes, Supplementary Test Data, and Mathematical Observations", Color Research
@@ -67,19 +67,6 @@ describe('colour difference', () => {
   });
 });
 
-/**
- * Sticker colours as a camera might see them under warm indoor light: made-up values, not
- * measurements, with the blue channel weakened and every sticker a little off.
- */
-const SEEN: Readonly<Record<Face, readonly [number, number, number]>> = {
-  U: [236, 228, 196],
-  D: [226, 200, 40],
-  F: [40, 150, 72],
-  B: [36, 70, 140],
-  R: [184, 38, 40],
-  L: [232, 104, 36],
-};
-
 function photograph(facelets: string, seed: number): Lab[] {
   const rng = Xoshiro128StarStar.fromSeed(seed);
   const noise = () => (rng.nextU32() / 2 ** 32 - 0.5) * 24;
@@ -92,29 +79,40 @@ function photograph(facelets: string, seed: number): Lab[] {
 
 const PALETTE = paletteLab(FACE_COLOURS);
 
+/** The cube's faces as pictures taken in the order D, B, L, U, F, R. */
+const TAKEN = [3, 5, 4, 0, 2, 1];
+
+function faces<T>(stickers: readonly T[], size: number): T[][] {
+  const perFace = size * size;
+  return TAKEN.map((f) => stickers.slice(f * perFace, (f + 1) * perFace));
+}
+
 describe('sticker classification', () => {
   it('reads a 3×3×3 by its centres despite the colour cast', () => {
     const scrambled = applyAlgorithm(SOLVED, "R U R' U' F2 D L2 B' R2 U F'");
     if (!scrambled.ok) throw new Error('bad scramble');
     const facelets = toFacelets(scrambled.value);
     for (let seed = 1; seed <= 20; seed++) {
-      expect(classifyStickers(photograph(facelets, seed), 3, PALETTE)).toBe(facelets);
+      const read = classifyFaces(faces(photograph(facelets, seed), 3), 3, PALETTE);
+      expect(read).toEqual(faces(facelets.split(''), 3).map((f) => f.join('')));
     }
   });
 
-  it('always gives each colour a face of stickers and keeps the 3×3×3 centres', () => {
+  it('always gives each colour a face of stickers and the 3×3×3 pictures different centres', () => {
     const rng = Xoshiro128StarStar.fromSeed(7);
     const byte = () => rng.nextU32() % 256;
     for (const size of [3, 4] as const) {
-      const noise = Array.from({ length: 6 * size * size }, () =>
-        srgbToLab(byte(), byte(), byte()),
+      const noise = Array.from({ length: 6 }, () =>
+        Array.from({ length: size * size }, () => srgbToLab(byte(), byte(), byte())),
       );
-      const letters = classifyStickers(noise, size, PALETTE);
+      const letters = classifyFaces(noise, size, PALETTE).join('');
       for (const face of ['U', 'R', 'F', 'D', 'L', 'B']) {
         expect(letters.split(face).length - 1).toBe(size * size);
       }
-      if (size === 3)
-        expect([4, 13, 22, 31, 40, 49].map((i) => letters[i]).join('')).toBe('URFDLB');
+      if (size === 3) {
+        const centres = classifyFaces(noise, size, PALETTE).map((f) => f.charAt(4));
+        expect(new Set(centres).size).toBe(6);
+      }
     }
   });
 
@@ -123,40 +121,8 @@ describe('sticker classification', () => {
     if (!scrambled.ok) throw new Error('bad scramble');
     const facelets = cube4ToFacelets(scrambled.value);
     for (let seed = 1; seed <= 20; seed++) {
-      expect(classifyStickers(photograph(facelets, seed), 4, PALETTE)).toBe(facelets);
+      const read = classifyFaces(faces(photograph(facelets, seed), 4), 4, PALETTE);
+      expect(read).toEqual(faces(facelets.split(''), 4).map((f) => f.join('')));
     }
-  });
-});
-
-describe('grid sampling', () => {
-  it('reads the middle of each cell and ignores glare and the gaps between stickers', () => {
-    const size = 3;
-    const side = 90;
-    const data = new Uint8ClampedArray(side * side * 4);
-    const colours: readonly (readonly [number, number, number])[] = [
-      [200, 0, 0],
-      [0, 200, 0],
-      [0, 0, 200],
-      [200, 200, 0],
-      [0, 200, 200],
-      [200, 0, 200],
-      [255, 255, 255],
-      [100, 100, 100],
-      [250, 120, 0],
-    ];
-    for (let y = 0; y < side; y++) {
-      for (let x = 0; x < side; x++) {
-        const cell = Math.floor(y / 30) * 3 + Math.floor(x / 30);
-        const border = x % 30 < 3 || y % 30 < 3;
-        const [r, g, b] = border ? [0, 0, 0] : (colours[cell] ?? [0, 0, 0]);
-        data.set([r, g, b, 255], (y * side + x) * 4);
-      }
-    }
-    // A glare spot in the middle of the first sticker.
-    data.set([255, 255, 255, 255], (15 * side + 15) * 4);
-    const cells = sampleGrid({ data, width: side, height: side }, size);
-    expect(cells.map((c) => c.css)).toEqual(
-      colours.map(([r, g, b]) => `rgb(${String(r)} ${String(g)} ${String(b)})`),
-    );
   });
 });

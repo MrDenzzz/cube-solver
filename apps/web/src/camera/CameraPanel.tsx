@@ -1,14 +1,13 @@
-import { FACES } from '@cube/core';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/i18n.ts';
 import { FACE_COLOURS } from '../scheme.ts';
-import { holdHint } from '../stickers/describe.ts';
-import { ENTRY_ORDER, type PuzzleSize } from '../stickers/stickers.ts';
-import { cx } from '../ui/cx.ts';
+import type { PuzzleSize } from '../stickers/stickers.ts';
 import ui from '../ui/ui.module.css';
 import styles from './CameraPanel.module.css';
-import { classifyStickers, paletteLab } from './colour.ts';
-import { gridSquare, sampleGrid, type CellColour } from './sample.ts';
+import { IDLE, matchingFace, watch, type Verdict, type Watch } from './capture.ts';
+import { classifyFaces, paletteLab } from './colour.ts';
+import { placeFaces } from './placement.ts';
+import { gridSquare, readGrid, type CellColour, type GridReading } from './sample.ts';
 
 type CameraState =
   | { readonly kind: 'starting' }
@@ -19,10 +18,20 @@ type CameraState =
       readonly message: string;
     };
 
+/** How often the picture is read, and the size it is read at: plenty for 16 stickers. */
+const READ_EVERY_MS = 125;
+const READ_SIDE = 240;
+
+export interface ScanResult {
+  readonly stickers: string;
+  /** Whether the pictures fit the cube in more than one way, so the result needs a look. */
+  readonly ambiguous: boolean;
+}
+
 /**
- * Reads the stickers with the camera, a face at a time in the editor's order and holds, so each
- * picture's rows and columns are the face's facelet order. Colours are only named once all six
- * faces are in, because every colour must cover exactly a face's worth of stickers.
+ * Reads the stickers with the camera. Faces are shown one at a time, in any order and any way
+ * up; a face is taken by itself once it fills the grid and holds still. With all six, the
+ * colours are named and the pictures placed on the cube (see placement.ts).
  */
 export function CameraPanel({
   size,
@@ -30,19 +39,21 @@ export function CameraPanel({
   onClose,
 }: {
   readonly size: PuzzleSize;
-  readonly onApply: (stickers: string) => void;
+  readonly onApply: (result: ScanResult) => void;
   readonly onClose: () => void;
 }) {
   const { t } = useI18n();
   const video = useRef<HTMLVideoElement>(null);
+  const canvas = useRef<HTMLCanvasElement | null>(null);
   const [camera, setCamera] = useState<CameraState>({ kind: 'starting' });
-  const [step, setStep] = useState(0);
-  const [captures, setCaptures] = useState<readonly (readonly CellColour[] | null)[]>(() =>
-    ENTRY_ORDER.map(() => null),
-  );
+  const [taken, setTaken] = useState<readonly (readonly CellColour[])[]>([]);
+  const [live, setLive] = useState<GridReading | null>(null);
+  const [verdict, setVerdict] = useState<Verdict>('none');
+  const [unplaceable, setUnplaceable] = useState(false);
+  const watching = useRef<Watch>(IDLE);
+  // The reading loop runs outside React's renders and needs the latest pictures.
+  const takenNow = useRef(taken);
   const palette = useMemo(() => paletteLab(FACE_COLOURS), []);
-  const face = ENTRY_ORDER[step] ?? 'F';
-  const done = captures.filter((c) => c !== null).length;
 
   useEffect(() => {
     let stream: MediaStream | undefined;
@@ -82,47 +93,83 @@ export function CameraPanel({
     };
   }, []);
 
-  const capture = () => {
+  /** The grid's square of the current frame, scaled down and read. */
+  const read = useCallback((): GridReading | null => {
     const element = video.current;
-    if (element === null || camera.kind !== 'live') return;
-    const square = gridSquare(element.videoWidth, element.videoHeight);
-    const canvas = document.createElement('canvas');
-    canvas.width = square.side;
-    canvas.height = square.side;
-    const context = canvas.getContext('2d', { willReadFrequently: true });
-    if (context === null) return;
-    context.drawImage(
-      element,
-      square.x,
-      square.y,
-      square.side,
-      square.side,
-      0,
-      0,
-      square.side,
-      square.side,
-    );
-    const cells = sampleGrid(context.getImageData(0, 0, square.side, square.side), size);
-    const next = captures.map((c, i) => (i === step ? cells : c));
-    setCaptures(next);
-    const missing = ENTRY_ORDER.findIndex((_, i) => next[(step + 1 + i) % 6] === null);
-    if (missing !== -1) setStep((step + 1 + missing) % 6);
-  };
+    if (element === null || element.videoWidth === 0) return null;
+    canvas.current ??= document.createElement('canvas');
+    canvas.current.width = READ_SIDE;
+    canvas.current.height = READ_SIDE;
+    const context = canvas.current.getContext('2d', { willReadFrequently: true });
+    if (context === null) return null;
+    const { x, y, side } = gridSquare(element.videoWidth, element.videoHeight);
+    context.drawImage(element, x, y, side, side, 0, 0, READ_SIDE, READ_SIDE);
+    return readGrid(context.getImageData(0, 0, READ_SIDE, READ_SIDE), size);
+  }, [size]);
 
-  const apply = () => {
-    const samples = FACES.flatMap((f) =>
-      (captures[ENTRY_ORDER.indexOf(f)] ?? []).map((c) => c.lab),
-    );
-    onApply(classifyStickers(samples, size, palette));
+  const finish = useCallback(
+    (faces: readonly (readonly CellColour[])[]) => {
+      const letters = classifyFaces(
+        faces.map((cells) => cells.map((c) => c.lab)),
+        size,
+        palette,
+      );
+      const placed = placeFaces(letters, size);
+      if (placed === null) setUnplaceable(true);
+      else onApply({ stickers: placed.stickers, ambiguous: placed.ambiguous });
+    },
+    [onApply, palette, size],
+  );
+
+  const take = useCallback(
+    (cells: readonly CellColour[]) => {
+      const current = takenNow.current;
+      if (current.length >= 6 || matchingFace(cells, current, size) !== -1) return;
+      const next = [...current, cells];
+      takenNow.current = next;
+      setTaken(next);
+      if ('vibrate' in navigator) navigator.vibrate(60);
+      if (next.length === 6) finish(next);
+    },
+    [finish, size],
+  );
+
+  useEffect(() => {
+    if (camera.kind !== 'live') return;
+    const timer = setInterval(() => {
+      const reading = read();
+      if (reading === null) return;
+      setLive(reading);
+      const next = watch(watching.current, reading, takenNow.current, size);
+      watching.current = next.state;
+      setVerdict(next.verdict);
+      if (next.verdict === 'take') take(reading.cells);
+    }, READ_EVERY_MS);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [camera.kind, read, size, take]);
+
+  const remove = (index: number) => {
+    const next = takenNow.current.filter((_, i) => i !== index);
+    takenNow.current = next;
+    setTaken(next);
+    setUnplaceable(false);
   };
 
   const square =
     camera.kind === 'live' ? gridSquare(camera.width, camera.height) : { x: 0, y: 0, side: 0 };
+  const status = unplaceable
+    ? t('camera.unplaceable')
+    : verdict === 'taken-already'
+      ? t('camera.status.again')
+      : verdict === 'steadying'
+        ? t('camera.status.steady')
+        : t('camera.status.search');
 
   return (
     <div className={styles.camera}>
-      <p className={styles.hint}>{holdHint(face, size, t)}</p>
-      <p className={ui.muted}>{t('camera.aim')}</p>
+      <p className={styles.hint}>{t('camera.aim')}</p>
       <div
         className={styles.frame}
         style={
@@ -135,6 +182,7 @@ export function CameraPanel({
         {camera.kind === 'live' && (
           <div
             className={styles.grid}
+            data-verdict={verdict}
             style={{
               left: `${String((square.x / camera.width) * 100)}%`,
               top: `${String((square.y / camera.height) * 100)}%`,
@@ -145,7 +193,11 @@ export function CameraPanel({
             aria-hidden="true"
           >
             {Array.from({ length: size * size }, (_, i) => (
-              <span key={i} className={styles.cell} />
+              <span key={i} className={styles.cell}>
+                {verdict !== 'none' && (
+                  <span className={styles.dot} style={{ background: live?.cells[i]?.css }} />
+                )}
+              </span>
             ))}
           </div>
         )}
@@ -158,49 +210,54 @@ export function CameraPanel({
             : t(`camera.error.${camera.reason}`)}
         </p>
       )}
+      {camera.kind === 'live' && (
+        <p className={unplaceable ? ui.errors : ui.status} aria-live="polite">
+          {status}
+        </p>
+      )}
 
       <div className={styles.faces} role="group" aria-label={t('camera.faces')}>
-        {ENTRY_ORDER.map((f, i) => {
-          const cells = captures[i] ?? null;
-          return (
+        {Array.from({ length: 6 }, (_, i) => {
+          const cells = taken[i];
+          return cells === undefined ? (
+            <span key={i} className={styles.face} data-empty="true">
+              <span className={styles.thumb} />
+            </span>
+          ) : (
             <button
-              key={f}
+              key={i}
               type="button"
               className={styles.face}
-              aria-pressed={i === step}
-              aria-label={t('camera.face', { face: t(`face.${f}`) })}
+              title={t('camera.remove')}
+              aria-label={t('camera.removeFace', { n: i + 1 })}
               onClick={() => {
-                setStep(i);
+                remove(i);
               }}
             >
               <span
                 className={styles.thumb}
                 style={{ gridTemplateColumns: `repeat(${String(size)}, 1fr)` }}
               >
-                {Array.from({ length: size * size }, (_, k) => (
-                  <span
-                    key={k}
-                    style={cells === null ? undefined : { background: cells[k]?.css }}
-                  />
+                {cells.map((cell, k) => (
+                  <span key={k} style={{ background: cell.css }} />
                 ))}
               </span>
-              <span className={styles.label}>{t(`face.${f}`)}</span>
             </button>
           );
         })}
       </div>
-      <p className={ui.muted}>{t('camera.progress', { count: done })}</p>
+      <p className={ui.muted}>{t('camera.progress', { count: taken.length })}</p>
       <div className={ui.row}>
         <button
           type="button"
-          className={cx(ui.button, ui.primary)}
-          disabled={camera.kind !== 'live'}
-          onClick={capture}
+          className={ui.button}
+          disabled={camera.kind !== 'live' || taken.length >= 6}
+          onClick={() => {
+            const reading = read();
+            if (reading !== null) take(reading.cells);
+          }}
         >
           {t('camera.capture')}
-        </button>
-        <button type="button" className={ui.button} disabled={done < 6} onClick={apply}>
-          {t('camera.apply')}
         </button>
         <button type="button" className={ui.button} onClick={onClose}>
           {t('camera.cancel')}

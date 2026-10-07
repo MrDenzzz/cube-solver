@@ -160,24 +160,26 @@ function permutations(n: number): number[][] {
 const SIX_PERMUTATIONS = permutations(6);
 
 /**
- * Face letters for 6·n² sticker samples in facelet order. Every colour covers n² stickers, so the
- * samples are split into six groups of that size, refining each group's reference to the mean of
- * its members a few times. On the 3×3×3 each centre is its face's colour by definition: the
- * centres are pinned to their groups and start the references, which absorbs the light's colour
- * cast. The 4×4×4 has no fixed centres, so it starts from the palette and names the groups by the
- * assignment to the palette with the least total difference.
+ * Face letters for six face pictures, each n² samples in reading order, in the order they were
+ * taken. Every colour covers n² stickers, so the samples are split into six groups of that size,
+ * refining each group's reference to the mean of its members a few times. On the 3×3×3 each
+ * picture's centre is a different colour by definition: the centres are pinned to groups of their
+ * own and start the references, which absorbs the light's colour cast. The 4×4×4 has no fixed
+ * centres, so it starts from the palette. Either way the groups are named by the assignment to
+ * the palette with the least total difference.
  */
-export function classifyStickers(
-  samples: readonly Lab[],
+export function classifyFaces(
+  faces: readonly (readonly Lab[])[],
   size: 3 | 4,
   palette: Readonly<Record<Face, Lab>>,
-): string {
+): string[] {
   const perFace = size * size;
+  const samples = faces.flat();
   const pinned = new Map<number, number>(
-    size === 3 ? FACES.map((_, f) => [f * perFace + 4, f] as const) : [],
+    size === 3 ? faces.map((_, f) => [f * perFace + 4, f] as const) : [],
   );
   let references: Lab[] = FACES.map(
-    (face, f) => (size === 3 ? samples[f * perFace + 4] : undefined) ?? palette[face],
+    (face, f) => (size === 3 ? faces[f]?.[4] : undefined) ?? palette[face],
   );
   let group: number[] = [];
   for (let round = 0; round < 4; round++) {
@@ -185,18 +187,17 @@ export function classifyStickers(
     references = references.map((_, g) => mean(samples.filter((_, i) => group[i] === g)));
   }
   let names: readonly number[] = FACES.map((_, g) => g);
-  if (size === 4) {
-    let best = Number.POSITIVE_INFINITY;
-    for (const p of SIX_PERMUTATIONS) {
-      const total = p.reduce(
-        (s, face, g) => s + ciede2000(references[g] ?? [0, 0, 0], palette[FACES[face] ?? 'U']),
-        0,
-      );
-      if (total < best) {
-        best = total;
-        names = p;
-      }
+  let best = Number.POSITIVE_INFINITY;
+  for (const p of SIX_PERMUTATIONS) {
+    const total = p.reduce(
+      (s, face, g) => s + ciede2000(references[g] ?? [0, 0, 0], palette[FACES[face] ?? 'U']),
+      0,
+    );
+    if (total < best) {
+      best = total;
+      names = p;
     }
   }
-  return samples.map((_, i) => FACES[names[group[i] ?? 0] ?? 0] ?? 'U').join('');
+  const letters = samples.map((_, i) => FACES[names[group[i] ?? 0] ?? 0] ?? 'U').join('');
+  return faces.map((_, f) => letters.slice(f * perFace, (f + 1) * perFace));
 }

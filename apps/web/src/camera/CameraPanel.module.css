@@ -29,14 +29,35 @@
 .grid {
   position: absolute;
   display: grid;
-  border: 2px solid rgb(255 255 255 / 0.9);
+  border: 3px solid rgb(255 255 255 / 0.9);
   border-radius: 6px;
   box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.35);
   pointer-events: none;
+  transition: border-color 0.15s;
+}
+
+/* The frame says what the camera makes of the picture: a face settling, or one taken before. */
+.grid[data-verdict='steadying'],
+.grid[data-verdict='take'] {
+  border-color: #3ddc84;
+}
+
+.grid[data-verdict='taken-already'] {
+  border-color: #ffb300;
 }
 
 .cell {
+  display: grid;
+  place-items: center;
   border: 1px solid rgb(255 255 255 / 0.55);
+}
+
+/* What was read in each cell, small enough to leave the sticker visible. */
+.dot {
+  width: 22%;
+  aspect-ratio: 1;
+  border: 2px solid #fff;
+  border-radius: 50%;
 }
 
 .overlay {
@@ -67,8 +88,10 @@
   cursor: pointer;
 }
 
-.face[aria-pressed='true'] {
-  border-color: var(--accent);
+.face[data-empty='true'] {
+  border-style: dashed;
+  border-color: var(--border);
+  cursor: default;
 }
 
 .thumb {
@@ -82,8 +105,4 @@
 .thumb > span {
   background: var(--surface);
   border-radius: 1px;
-}
-
-.label {
-  font-size: 11px;
 }
