@@ -32,7 +32,7 @@ async function busyCamera(page: Page, failures: number) {
 const playing = (page: Page) =>
   page.locator('video').evaluate((video: HTMLVideoElement) => video.videoWidth);
 
-test('asks again without a preferred size when the camera refuses it', async ({ page }) => {
+test('falls back to the default camera when the first choice will not start', async ({ page }) => {
   await busyCamera(page, 1);
   await page.goto('/');
   await page.getByRole('button', { name: 'Stickers', exact: true }).click();

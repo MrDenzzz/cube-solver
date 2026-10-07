@@ -22,26 +22,36 @@ type CameraState =
 const READ_EVERY_MS = 125;
 const READ_SIDE = 240;
 
-/** The size asked for first; some webcams refuse it although they list it. */
+/** The size asked of the camera once it is open. */
 const PREFERRED = { width: { ideal: 1280 }, height: { ideal: 720 } } as const;
 
 /**
- * Opens a camera: the chosen one, or the rear one where there is a choice. If the device will
- * not start with the preferred size, it is asked once more with no wishes beyond the device.
+ * Opens a camera: the chosen one, else the rear one on a phone, else the browser's default.
+ * The size is asked for only after the device is open: as a wish when opening, it makes Chrome
+ * prefer whichever camera offers it, which on a computer with virtual cameras can be one that
+ * is not running. If the first choice still will not start, the browser's default is asked.
  */
 async function openCamera(deviceId: string | null): Promise<MediaStream> {
   const device = deviceId === null ? null : { deviceId: { exact: deviceId } };
-  const preferred = device ?? { facingMode: { ideal: 'environment' } };
+  let stream: MediaStream;
   try {
-    return await navigator.mediaDevices.getUserMedia({
-      video: { ...preferred, ...PREFERRED },
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: device ?? { facingMode: { ideal: 'environment' } },
       audio: false,
     });
   } catch (error) {
     const name = error instanceof DOMException ? error.name : '';
-    if (name !== 'NotReadableError' && name !== 'OverconstrainedError') throw error;
-    return navigator.mediaDevices.getUserMedia({ video: device ?? true, audio: false });
+    if (device !== null || (name !== 'NotReadableError' && name !== 'OverconstrainedError')) {
+      throw error;
+    }
+    stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
   }
+  // A camera that cannot do the size keeps its own: the reading works at any size.
+  await stream
+    .getVideoTracks()[0]
+    ?.applyConstraints(PREFERRED)
+    .catch(() => undefined);
+  return stream;
 }
 
 const REASONS: Readonly<Record<string, 'denied' | 'missing' | 'busy'>> = {
