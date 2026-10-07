@@ -8,7 +8,7 @@ import {
   type CubieCube,
 } from './cubie.ts';
 import type { CubeError } from './errors.ts';
-import { FACES, type Face } from './geometry.ts';
+import { FACES, solvedFacelets, type Face } from './geometry.ts';
 import { at, err, ok, symbols, type Result } from './util.ts';
 import { checkInvariants } from './validation.ts';
 
@@ -17,7 +17,7 @@ const FACELET_COUNT = 6 * STICKERS_PER_FACE;
 const CENTRE = 4;
 
 /** Kociemba's facelet string of the solved cube: U1..U9, R1..R9, F1..F9, D1..D9, L1..L9, B1..B9. */
-export const SOLVED_FACELETS = FACES.map((face) => face.repeat(STICKERS_PER_FACE)).join('');
+export const SOLVED_FACELETS = solvedFacelets(3);
 
 export function toFacelets(cube: CubieCube): string {
   const facelets: Face[] = FACES.flatMap((face) => new Array<Face>(STICKERS_PER_FACE).fill(face));

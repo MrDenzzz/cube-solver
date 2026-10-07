@@ -1,4 +1,11 @@
-export { applyAlgorithm, expandTo3x3, toLayerTurn, type LayerTurn } from './algorithm.ts';
+export {
+  applyAlgorithm,
+  applyLayerTurns,
+  expandTo3x3,
+  toLayerTurn,
+  toMove,
+  type LayerTurn,
+} from './algorithm.ts';
 export {
   CORNER_FACELETS,
   CORNER_FACES,
@@ -22,6 +29,7 @@ export {
   faceNormal,
   isFace,
   OPPOSITE,
+  solvedFacelets,
   stickerAt,
   stickerCount,
   type Face,

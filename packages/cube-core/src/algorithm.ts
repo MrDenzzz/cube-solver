@@ -1,5 +1,14 @@
 import type { CubieCube } from './cubie.ts';
-import { FACES, faceNormal, faceWithNormal, OPPOSITE, rotateTurns, type Face } from './geometry.ts';
+import {
+  FACES,
+  faceNormal,
+  faceWithNormal,
+  layerTurnPermutation,
+  OPPOSITE,
+  permute,
+  rotateTurns,
+  type Face,
+} from './geometry.ts';
 import { applyFaceTurns, inverseTurns, type FaceTurn, type Turns } from './moves.ts';
 import {
   formatMove,
@@ -9,7 +18,7 @@ import {
   type NotationMode,
   type ParsedMove,
 } from './notation.ts';
-import { err, ok, type Result } from './util.ts';
+import { err, ok, symbols, type Result } from './util.ts';
 
 /** Layers `from`..`to` of `face` (1 = outer layer), turned clockwise as seen from `face`. */
 export interface LayerTurn {
@@ -38,6 +47,56 @@ export function toLayerTurn(move: Move, size: number): LayerTurn | undefined {
     case 'rotation':
       return { face, from: 1, to: size, turns };
   }
+}
+
+/**
+ * The notation for a layer turn: WCA where it has a name, SiGN for inner slices. Layers that
+ * reach the far side are named from the opposite face, so the last layer of R is written L′.
+ */
+export function toMove(turn: LayerTurn, size: number): Move {
+  const { face, from, to, turns } = turn;
+  if (from === 1 && to === size) return { kind: 'rotation', face, turns };
+  if (from === 1) return { kind: 'block', face, depth: to, turns };
+  if (to === size) {
+    return {
+      kind: 'block',
+      face: OPPOSITE[face],
+      depth: size - from + 1,
+      turns: inverseTurns(turns),
+    };
+  }
+  if (from === to) return { kind: 'slice', face, layer: from, turns };
+  throw new RangeError(`Layers ${String(from)}..${String(to)} of ${face} have no single move name`);
+}
+
+const permutations = new Map<string, readonly number[]>();
+
+function cachedLayerPermutation(size: number, face: Face, layer: number, turns: Turns) {
+  const key = `${String(size)}${face}${String(layer)}${String(turns)}`;
+  let permutation = permutations.get(key);
+  if (permutation === undefined) {
+    permutation = layerTurnPermutation(size, face, layer, turns);
+    permutations.set(key, permutation);
+  }
+  return permutation;
+}
+
+/**
+ * Applies layer turns to the stickers of an N×N×N cube, one symbol per sticker in facelet order.
+ * Works for any alphabet, including placeholders for stickers not entered yet.
+ */
+export function applyLayerTurns(
+  facelets: string,
+  size: number,
+  turns: readonly LayerTurn[],
+): string {
+  let stickers = symbols(facelets);
+  for (const { face, from, to, turns: t } of turns) {
+    for (let layer = from; layer <= to; layer++) {
+      stickers = permute(stickers, cachedLayerPermutation(size, face, layer, t));
+    }
+  }
+  return stickers.join('');
 }
 
 /** Which reference face (centre) is currently at each spatial face position. */

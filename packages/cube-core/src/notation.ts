@@ -78,7 +78,7 @@ export function parseAlgorithm(
 
     const turns: Turns = half === undefined ? (prime === undefined ? 1 : 3) : 2;
     const layerCount = prefix === undefined ? undefined : Number(prefix);
-    const move = toMove(letters, layerCount, turns);
+    const move = readMove(letters, layerCount, turns);
     if (move.kind === 'invalid') {
       errors.push({ code: 'invalid-move', start, end, token });
       continue;
@@ -99,7 +99,7 @@ export function parseAlgorithm(
   return errors.length > 0 ? err(errors) : ok(moves);
 }
 
-function toMove(
+function readMove(
   letters: string,
   layerCount: number | undefined,
   turns: Turns,

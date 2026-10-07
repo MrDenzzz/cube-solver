@@ -98,6 +98,11 @@ export function stickerCount(size: number): number {
   return 6 * size * size;
 }
 
+/** Facelet string of the solved N×N×N cube: each face's letter N² times, in face order. */
+export function solvedFacelets(size: number): string {
+  return FACES.map((face) => face.repeat(size * size)).join('');
+}
+
 export function stickerAt(size: number, facelet: number): Sticker {
   const perFace = size * size;
   const face = at(FACES, Math.floor(facelet / perFace));
