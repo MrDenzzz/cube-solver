@@ -22,6 +22,23 @@ export {
   type CubieCube,
   type EdgeName,
 } from './cubie.ts';
+export {
+  applyLayerTurn4,
+  applyLayerTurns4,
+  CENTRE_FACELETS,
+  CORNER_FACELETS_4,
+  cube4ToFacelets,
+  isSolved4,
+  parseFacelets4,
+  randomCube4,
+  slotPermutations,
+  SOLVED_4,
+  STICKERS_4,
+  WING_FACELETS,
+  wingFlipped,
+  type Cube4,
+  type Cube4Error,
+} from './cube4.ts';
 export type { CubeError, CubeErrorCode } from './errors.ts';
 export { parseFacelets, SOLVED_FACELETS, toFacelets } from './facelets.ts';
 export {
