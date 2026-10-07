@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { readStored, writeStored } from '../ui/storage.ts';
-import { SolverClient, type OptimalStatus, type SolverStatus } from './client.ts';
+import { SolverClient, type FourStatus, type OptimalStatus, type SolverStatus } from './client.ts';
 
 /** Which engine runs in the worker: the TypeScript solvers or their Rust port. */
 export type EngineKind = 'typescript' | 'wasm';
@@ -17,6 +17,8 @@ const WORKERS: Readonly<Record<EngineKind, () => Worker>> = {
 let kind: EngineKind = readStored(STORAGE_KEY) === 'wasm' ? 'wasm' : 'typescript';
 let client: SolverClient | undefined;
 let detach: (() => void) | undefined;
+/** The 4×4×4 solver exists only in TypeScript: a worker of its own while WebAssembly is chosen. */
+let fourClient: SolverClient | undefined;
 const listeners = new Set<() => void>();
 
 function notify(): void {
@@ -32,6 +34,16 @@ export function getSolverClient(): SolverClient {
   return client;
 }
 
+/** The worker with a 4×4×4 solver: the page's own while the engine is TypeScript. */
+export function getFourClient(): SolverClient {
+  if (kind === 'typescript') return getSolverClient();
+  if (fourClient === undefined) {
+    fourClient = new SolverClient(WORKERS.typescript);
+    fourClient.subscribe(notify);
+  }
+  return fourClient;
+}
+
 /** Switches engines; pending requests of the old one are rejected. */
 export function setEngineKind(next: EngineKind): void {
   if (next === kind) return;
@@ -40,6 +52,11 @@ export function setEngineKind(next: EngineKind): void {
   detach?.();
   client?.dispose();
   client = undefined;
+  // The TypeScript worker now serves the 4×4×4 too.
+  if (next === 'typescript') {
+    fourClient?.dispose();
+    fourClient = undefined;
+  }
   getSolverClient();
   notify();
 }
@@ -59,4 +76,14 @@ export function useSolverStatus(): SolverStatus {
 
 export function useOptimalStatus(): OptimalStatus {
   return useSyncExternalStore(subscribe, () => getSolverClient().getOptimalStatus());
+}
+
+const NO_FOUR: FourStatus = { kind: 'none' };
+
+/** Reads the status without starting a worker for it. */
+export function useFourStatus(): FourStatus {
+  return useSyncExternalStore(
+    subscribe,
+    () => (kind === 'typescript' ? getSolverClient() : fourClient)?.getFourStatus() ?? NO_FOUR,
+  );
 }

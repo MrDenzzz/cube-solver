@@ -1,5 +1,6 @@
 import {
   CANCEL_FLAG,
+  type FourSolver,
   type FromWorker,
   type PrepareRequest,
   type SolverEngine,
@@ -89,10 +90,35 @@ export function startWorkerHost(
     });
   }
 
+  /** The 4×4×4 tables, built on first use; null when the engine has no 4×4×4 solver. */
+  function prepareFour(id: number): FourSolver | null {
+    const { four } = engine;
+    if (four === undefined) {
+      post({ type: 'error', id, message: `The ${engine.name} engine has no 4×4×4 solver` });
+      return null;
+    }
+    const start = performance.now();
+    const { tableBytes } = four.prepare(
+      throttled((done: number, total: number) => {
+        post({ type: 'four-progress', id, done, total });
+      }),
+    );
+    post({ type: 'four-ready', id, tableBytes, ms: performance.now() - start });
+    return four;
+  }
+
   return (message) => {
     const { id } = message;
     if (!ready) {
       post({ type: 'error', id, message: 'The solver tables are not available' });
+      return;
+    }
+    if (message.type === 'prepare-four') {
+      try {
+        prepareFour(id);
+      } catch (error) {
+        post({ type: 'error', id, message: String(error) });
+      }
       return;
     }
     const flag = message.cancelFlag === undefined ? undefined : new Int32Array(message.cancelFlag);
@@ -101,6 +127,16 @@ export function startWorkerHost(
       prepare(message, shouldStop).catch((error: unknown) => {
         post({ type: 'error', id, message: String(error) });
       });
+      return;
+    }
+    if (message.type === 'solve-four') {
+      try {
+        const four = prepareFour(id);
+        if (four !== null)
+          post({ type: 'four-result', id, result: four.solve(message.cube, shouldStop) });
+      } catch (error) {
+        post({ type: 'error', id, message: String(error) });
+      }
       return;
     }
     try {

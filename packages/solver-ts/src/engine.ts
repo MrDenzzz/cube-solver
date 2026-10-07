@@ -1,5 +1,14 @@
-import { faceTurnIndex, type FaceTurn } from '@cube/core';
-import type { OptimalTier, SolveHooks, SolveResult, SolverEngine } from '@cube/solver-contracts';
+import { faceTurnIndex, MOVES_4, type FaceTurn, type LayerTurn } from '@cube/core';
+import type {
+  FourSolver,
+  OptimalTier,
+  SolveHooks,
+  SolveResult,
+  SolverEngine,
+} from '@cube/solver-contracts';
+import { buildEdgePairing } from './four/edge-pairing.ts';
+import { createReductionSolver, type ReductionSolve } from './four/reduction.ts';
+import { buildReductionTables } from './four/tables.ts';
 import { createOptimalSolver, optimalLowerBound, type OptimalSolve } from './optimal.ts';
 import { buildOptimalTables, type OptimalTables } from './optimal-tables.ts';
 import { createParallelOptimalSolver, type HelperPool } from './parallel.ts';
@@ -21,6 +30,18 @@ export interface EngineOptions {
   readonly helpers?: () => HelperPool;
 }
 
+const moveIndex4 = (turn: LayerTurn) => {
+  const index = MOVES_4.findIndex(
+    (m) =>
+      m.face === turn.face && m.from === turn.from && m.to === turn.to && m.turns === turn.turns,
+  );
+  if (index === -1) throw new Error('The 4×4×4 solver made a move outside MOVES_4');
+  return index;
+};
+
+/** Reduction tables in three steps, then the edge pairing table. */
+const FOUR_STEPS = 4;
+
 /** The TypeScript solvers behind the engine-neutral worker protocol. */
 export function createTypeScriptEngine({ helpers }: EngineOptions = {}): SolverEngine {
   const parallel = helpers !== undefined && typeof SharedArrayBuffer === 'function';
@@ -40,6 +61,36 @@ export function createTypeScriptEngine({ helpers }: EngineOptions = {}): SolverE
   const ready = () => {
     if (fast === undefined) throw new Error('Call init() before using the engine');
     return fast;
+  };
+
+  // Built on the first 4×4×4 request; the 3×3×3 finish reuses the fast solver.
+  let reduction: { readonly solve: ReductionSolve; readonly tableBytes: number } | undefined;
+  const four: FourSolver = {
+    prepare(onProgress) {
+      if (reduction === undefined) {
+        let done = 0;
+        const tables = buildReductionTables(() => {
+          onProgress(++done, FOUR_STEPS);
+        });
+        const edges = buildEdgePairing();
+        onProgress(FOUR_STEPS, FOUR_STEPS);
+        reduction = {
+          solve: createReductionSolver(tables, edges, ready().solve),
+          tableBytes: tables.bytes + edges.prune.byteLength,
+        };
+      }
+      return { tableBytes: reduction.tableBytes };
+    },
+    solve(cube, shouldStop) {
+      four.prepare(() => undefined);
+      const begin = performance.now();
+      const result = reduction?.solve(cube, { shouldStop });
+      return {
+        moves: result?.moves?.map(moveIndex4) ?? null,
+        phases: result?.phases ?? [],
+        elapsedMs: performance.now() - begin,
+      };
+    },
   };
 
   function solveOptimal(
@@ -86,6 +137,7 @@ export function createTypeScriptEngine({ helpers }: EngineOptions = {}): SolverE
 
   return {
     name: 'TypeScript',
+    four,
     allocateTableFile: (size) =>
       new Uint8Array(parallel ? new SharedArrayBuffer(size) : new ArrayBuffer(size)),
     init(onProgress) {

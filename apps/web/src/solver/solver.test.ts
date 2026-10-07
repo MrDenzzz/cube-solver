@@ -1,8 +1,11 @@
 import {
   applyAlgorithm,
   applyFaceTurns,
+  applyLayerTurns4,
   isSolved,
+  isSolved4,
   randomCube,
+  randomCube4,
   SOLVED,
   Xoshiro128StarStar,
 } from '@cube/core';
@@ -10,6 +13,7 @@ import type { FromWorker, ToWorker } from '@cube/solver-contracts';
 import { createTypeScriptEngine } from '@cube/solver-ts';
 import { describe, expect, it } from 'vitest';
 import { SolverClient, type SolverStatus, type WorkerLike } from './client.ts';
+import { toLayerTurns4 } from './useFourSession.ts';
 import { toFaceTurns } from './useSolveSession.ts';
 import { startWorkerHost, type TableStorage } from './worker-host.ts';
 
@@ -160,4 +164,18 @@ describe('solver client and worker host', { timeout: 30_000 }, () => {
     expect(isSolved(applyFaceTurns(scrambled.value, toFaceTurns(result.moves ?? [])))).toBe(true);
     second.dispose();
   }, 180_000);
+
+  it('prepares the 4×4×4 tables once and solves a 4×4×4', async () => {
+    const client = new SolverClient(inMemoryWorker, true);
+    await client.prepareFour();
+    const status = client.getFourStatus();
+    expect(status.kind).toBe('ready');
+    const cube4 = randomCube4(Xoshiro128StarStar.fromSeed(4));
+    const { moves, phases } = await client.solveFour(cube4).result;
+    expect(phases).toHaveLength(4);
+    expect(isSolved4(applyLayerTurns4(cube4, toLayerTurns4(moves ?? [])))).toBe(true);
+    // The tables were built once: the solve's own readiness report keeps the first build time.
+    expect(client.getFourStatus()).toBe(status);
+    client.dispose();
+  }, 60_000);
 });

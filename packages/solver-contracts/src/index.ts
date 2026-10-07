@@ -1,8 +1,9 @@
-import type { CubieCube } from '@cube/core';
+import type { Cube4, CubieCube } from '@cube/core';
 
 // The protocol between the UI thread and a solver worker. It is engine-neutral: the TypeScript and
 // the WebAssembly engines implement the same messages, and moves travel as face turn indices
-// (0..17 in Kociemba's order U, U2, U', R, …, B') so no engine needs the other's types.
+// (0..17 in Kociemba's order U, U2, U', R, …, B') so no engine needs the other's types. 4×4×4
+// moves are indices into MOVES_4 of @cube/core.
 
 /**
  * Table size of the optimal solver: `standard` is about 35 MB and suits any device; `huge` is
@@ -52,6 +53,22 @@ export interface SolveResult {
   readonly elapsedMs: number;
 }
 
+/** The 4×4×4 reduction's answer. */
+export interface FourResult {
+  /** Indices into MOVES_4, or null when cancelled. */
+  readonly moves: readonly number[] | null;
+  /** Moves of the three reduction phases and of the 3×3×3 finish, before merging at the seams. */
+  readonly phases: readonly number[];
+  readonly elapsedMs: number;
+}
+
+/** The 4×4×4 solver, for engines that have one. */
+export interface FourSolver {
+  /** Builds the tables once; later calls return at once. Reports steps done out of total. */
+  prepare(onProgress: (done: number, total: number) => void): { readonly tableBytes: number };
+  solve(cube: Cube4, shouldStop: () => boolean): FourResult;
+}
+
 export interface SolveHooks {
   readonly shouldStop: () => boolean;
   readonly onProgress: (progress: SolveProgress) => void;
@@ -92,6 +109,7 @@ export interface SolverEngine {
     hooks: PrepareHooks,
   ): PreparedTables | null;
   solve(cube: CubieCube, options: SolveOptions, hooks: SolveHooks): SolveResult;
+  readonly four?: FourSolver;
 }
 
 /** Slot in the shared Int32Array that a worker polls to abandon the current task. */
@@ -117,7 +135,18 @@ export interface PrepareRequest extends Cancellable {
   readonly tier: OptimalTier;
 }
 
-export type ToWorker = SolveRequest | PrepareRequest;
+export interface PrepareFourRequest {
+  readonly type: 'prepare-four';
+  readonly id: number;
+}
+
+/** Prepares the 4×4×4 tables first if needed. */
+export interface SolveFourRequest extends Cancellable {
+  readonly type: 'solve-four';
+  readonly cube: Cube4;
+}
+
+export type ToWorker = SolveRequest | PrepareRequest | PrepareFourRequest | SolveFourRequest;
 
 export interface PrepareReport {
   readonly tier: OptimalTier;
@@ -143,4 +172,17 @@ export type FromWorker =
     }
   /** The report, or null when the preparation was cancelled. */
   | { readonly type: 'prepared'; readonly id: number; readonly report: PrepareReport | null }
+  | {
+      readonly type: 'four-progress';
+      readonly id: number;
+      readonly done: number;
+      readonly total: number;
+    }
+  | {
+      readonly type: 'four-ready';
+      readonly id: number;
+      readonly tableBytes: number;
+      readonly ms: number;
+    }
+  | { readonly type: 'four-result'; readonly id: number; readonly result: FourResult }
   | { readonly type: 'error'; readonly id: number | null; readonly message: string };

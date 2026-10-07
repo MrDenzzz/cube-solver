@@ -1,6 +1,7 @@
-import type { CubieCube } from '@cube/core';
+import type { Cube4, CubieCube } from '@cube/core';
 import {
   CANCEL_FLAG,
+  type FourResult,
   type FromWorker,
   type OptimalTier,
   type PrepareReport,
@@ -26,6 +27,13 @@ export type OptimalStatus =
     }
   | { readonly kind: 'ready'; readonly report: PrepareReport }
   | { readonly kind: 'failed'; readonly tier: OptimalTier; readonly message: string };
+
+/** Whether the 4×4×4 tables are in the worker. */
+export type FourStatus =
+  | { readonly kind: 'none' }
+  | { readonly kind: 'preparing'; readonly done: number; readonly total: number }
+  | { readonly kind: 'ready'; readonly tableBytes: number; readonly ms: number }
+  | { readonly kind: 'failed'; readonly message: string };
 
 export interface SolveCallbacks {
   readonly onProgress?: (progress: SolveProgress) => void;
@@ -61,9 +69,22 @@ type Pending =
       readonly resolve: (report: PrepareReport | null) => void;
       readonly reject: (error: Error) => void;
       readonly flag: Int32Array<SharedArrayBuffer> | undefined;
+    }
+  | {
+      readonly kind: 'prepare-four';
+      readonly resolve: () => void;
+      readonly reject: (error: Error) => void;
+      readonly flag: undefined;
+    }
+  | {
+      readonly kind: 'solve-four';
+      readonly resolve: (result: FourResult) => void;
+      readonly reject: (error: Error) => void;
+      readonly flag: Int32Array<SharedArrayBuffer> | undefined;
     };
 
 const CANCELLED: SolveResult = { moves: null, stoppedBy: 'cancelled', nodes: 0, elapsedMs: 0 };
+const CANCELLED_FOUR: FourResult = { moves: null, phases: [], elapsedMs: 0 };
 
 /**
  * Owns the solver worker. Cancellation sets a flag in shared memory that the worker polls; where
@@ -78,6 +99,7 @@ export class SolverClient {
   #worker: WorkerLike;
   #status: SolverStatus = { kind: 'starting', done: 0, total: 1 };
   #optimal: OptimalStatus = { kind: 'none' };
+  #four: FourStatus = { kind: 'none' };
   #nextId = 1;
 
   constructor(createWorker: () => WorkerLike, sharedMemory = canShareMemory()) {
@@ -94,6 +116,8 @@ export class SolverClient {
   readonly getStatus = (): SolverStatus => this.#status;
 
   readonly getOptimalStatus = (): OptimalStatus => this.#optimal;
+
+  readonly getFourStatus = (): FourStatus => this.#four;
 
   solve(cube: CubieCube, options: SolveOptions, callbacks: SolveCallbacks = {}): SolveHandle {
     const id = this.#nextId++;
@@ -119,6 +143,32 @@ export class SolverClient {
     });
     this.#setOptimal({ kind: 'preparing', tier, done: 0, total: 1 });
     this.#worker.postMessage({ type: 'prepare', id, tier, ...this.#flagField(flag) });
+    return {
+      result,
+      cancel: () => {
+        this.#cancel(id);
+      },
+    };
+  }
+
+  /** Builds the 4×4×4 tables ahead of the first solve. */
+  prepareFour(): Promise<void> {
+    const id = this.#nextId++;
+    const result = new Promise<void>((resolve, reject) => {
+      this.#pending.set(id, { kind: 'prepare-four', resolve, reject, flag: undefined });
+    });
+    if (this.#four.kind !== 'ready') this.#setFour({ kind: 'preparing', done: 0, total: 1 });
+    this.#worker.postMessage({ type: 'prepare-four', id });
+    return result;
+  }
+
+  solveFour(cube: Cube4): Handle<FourResult> {
+    const id = this.#nextId++;
+    const flag = this.#newFlag();
+    const result = new Promise<FourResult>((resolve, reject) => {
+      this.#pending.set(id, { kind: 'solve-four', resolve, reject, flag });
+    });
+    this.#worker.postMessage({ type: 'solve-four', id, cube, ...this.#flagField(flag) });
     return {
       result,
       cancel: () => {
@@ -161,11 +211,23 @@ export class SolverClient {
     }
     this.#worker.terminate();
     for (const queued of this.#pending.values()) {
-      if (queued.kind === 'solve') queued.resolve(CANCELLED);
-      else queued.resolve(null);
+      switch (queued.kind) {
+        case 'solve':
+          queued.resolve(CANCELLED);
+          break;
+        case 'prepare':
+          queued.resolve(null);
+          break;
+        case 'prepare-four':
+          queued.resolve();
+          break;
+        case 'solve-four':
+          queued.resolve(CANCELLED_FOUR);
+      }
     }
     this.#pending.clear();
     this.#setOptimal({ kind: 'none' });
+    this.#setFour({ kind: 'none' });
     this.#setStatus({ kind: 'starting', done: 0, total: 1 });
     this.#worker = this.#spawn();
   }
@@ -215,6 +277,26 @@ export class SolverClient {
         pending.resolve(message.report);
         return;
       }
+      case 'four-progress':
+        this.#setFour({ kind: 'preparing', done: message.done, total: message.total });
+        return;
+      case 'four-ready': {
+        // Every solve reports the tables ready; the first report carries the build time.
+        if (this.#four.kind !== 'ready') {
+          this.#setFour({ kind: 'ready', tableBytes: message.tableBytes, ms: message.ms });
+        }
+        const pending = this.#pending.get(message.id);
+        if (pending?.kind !== 'prepare-four') return;
+        this.#pending.delete(message.id);
+        pending.resolve();
+        return;
+      }
+      case 'four-result': {
+        const pending = this.#pending.get(message.id);
+        if (pending?.kind === 'solve-four') pending.resolve(message.result);
+        this.#pending.delete(message.id);
+        return;
+      }
       case 'error': {
         if (message.id === null) {
           this.#setStatus({ kind: 'failed', message: message.message });
@@ -224,6 +306,12 @@ export class SolverClient {
         this.#pending.delete(message.id);
         if (pending?.kind === 'prepare') {
           this.#setOptimal({ kind: 'failed', tier: pending.tier, message: message.message });
+        }
+        if (
+          (pending?.kind === 'prepare-four' || pending?.kind === 'solve-four') &&
+          this.#four.kind !== 'ready'
+        ) {
+          this.#setFour({ kind: 'failed', message: message.message });
         }
         pending?.reject(new Error(message.message));
       }
@@ -237,6 +325,11 @@ export class SolverClient {
 
   #setOptimal(status: OptimalStatus): void {
     this.#optimal = status;
+    this.#notify();
+  }
+
+  #setFour(status: FourStatus): void {
+    this.#four = status;
     this.#notify();
   }
 
