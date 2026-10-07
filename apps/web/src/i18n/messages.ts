@@ -10,7 +10,62 @@ const en = {
   'language.label': 'Language',
   'cube.label': 'The cube in 3D. Drag to look around it.',
 
-  'scramble.title': 'Scramble',
+  'input.title': 'Cube state',
+  'input.mode.scramble': 'Scramble',
+  'input.mode.stickers': 'Stickers',
+
+  'colour.U': 'white',
+  'colour.R': 'red',
+  'colour.F': 'green',
+  'colour.D': 'yellow',
+  'colour.L': 'orange',
+  'colour.B': 'blue',
+  'colour.unknown': 'not set',
+
+  'face.U': 'top',
+  'face.R': 'right',
+  'face.F': 'front',
+  'face.D': 'bottom',
+  'face.L': 'left',
+  'face.B': 'back',
+
+  'stickers.hint.F':
+    'Hold the cube with the {facing} centre facing you and {top} on top. This is the starting position.',
+  'stickers.hint.R':
+    'From the start, turn the cube a quarter to the left: {facing} centre facing you, {top} on top.',
+  'stickers.hint.B':
+    'From the start, turn the cube half way round: {facing} centre facing you, {top} on top.',
+  'stickers.hint.L':
+    'From the start, turn the cube a quarter to the right: {facing} centre facing you, {top} on top.',
+  'stickers.hint.U':
+    'From the start, tilt the top towards you: {facing} centre facing you, {top} on top.',
+  'stickers.hint.D':
+    'From the start, tilt the bottom towards you: {facing} centre facing you, {top} on top.',
+  'stickers.net': 'Unfolded cube',
+  'stickers.faceLabel': '{face} face',
+  'stickers.sticker': '{face} face, row {row}, column {column}: {colour}',
+  'stickers.palette': 'Colour',
+  'stickers.count': '{colour}: {count} of 9',
+  'stickers.keys':
+    'Keys W Y G B R O fill in the selected sticker and move on; arrow keys move around.',
+  'stickers.clear': 'Clear',
+  'stickers.missing': 'Stickers left to fill in: {count}',
+  'stickers.valid': 'The state is valid and ready to solve.',
+  'stickers.error.colour-count': '{colour}: {count} stickers instead of 9',
+  'stickers.error.invalid-corner': 'Corner {position}: no corner has these colours',
+  'stickers.error.mirrored-corner':
+    'Corner {position}: the colours go in mirror order, so one of its stickers is wrong',
+  'stickers.error.invalid-edge': 'Edge {position}: no edge has these colours',
+  'stickers.error.duplicate-corner': 'Corner {piece} appears more than once',
+  'stickers.error.duplicate-edge': 'Edge {piece} appears more than once',
+  'stickers.error.twisted-corner':
+    'One corner is twisted in place. Check the stickers; if they are right, the cube was reassembled wrongly and cannot be solved without taking it apart.',
+  'stickers.error.flipped-edge':
+    'One edge is flipped in place. Check the stickers; if they are right, the cube was reassembled wrongly and cannot be solved without taking it apart.',
+  'stickers.error.parity':
+    'Two pieces are swapped. Check the stickers; if they are right, the cube was reassembled wrongly and cannot be solved without taking it apart.',
+  'stickers.error.other': 'These stickers do not describe a cube.',
+
   'scramble.label': 'Moves in WCA notation (SiGN slices and wide moves also work)',
   'scramble.placeholder': "e.g. R U R' U' F2 D L2",
   'scramble.random': 'Random state',
@@ -52,6 +107,44 @@ const en = {
   'playback.speed': 'Speed',
   'playback.position': 'Move {position} of {total}',
   'playback.keys': 'Space plays and pauses, arrow keys step.',
+
+  'guide.hold': 'Hold the cube with the {top} centre on top and the {front} centre facing you.',
+  'guide.start': 'Make the moves on your cube one at a time and press Next after each.',
+  'guide.step': 'Move {n} of {total}',
+  'guide.face.U': 'Top face',
+  'guide.face.R': 'Right face',
+  'guide.face.F': 'Front face',
+  'guide.face.D': 'Bottom face',
+  'guide.face.L': 'Left face',
+  'guide.face.B': 'Back face',
+  'guide.wide.U': 'Top {n} layers',
+  'guide.wide.R': 'Right {n} layers',
+  'guide.wide.F': 'Front {n} layers',
+  'guide.wide.D': 'Bottom {n} layers',
+  'guide.wide.L': 'Left {n} layers',
+  'guide.wide.B': 'Back {n} layers',
+  'guide.towards': 'Turn it so the {side} goes {direction}.',
+  'guide.side.F': 'front',
+  'guide.side.U': 'top',
+  'guide.direction.U': 'up',
+  'guide.direction.R': 'right',
+  'guide.direction.F': 'towards you',
+  'guide.direction.D': 'down',
+  'guide.direction.L': 'left',
+  'guide.direction.B': 'away from you',
+  'guide.half': 'Half turn, 180°, either way.',
+  'guide.clockwise': 'Clockwise as seen from {from}.',
+  'guide.counterClockwise': 'Counter-clockwise as seen from {from}.',
+  'guide.from.U': 'above',
+  'guide.from.R': 'the right',
+  'guide.from.F': 'the front',
+  'guide.from.D': 'below',
+  'guide.from.L': 'the left',
+  'guide.from.B': 'behind',
+  'guide.next': 'Next',
+  'guide.back': 'Back',
+  'guide.done': 'Solved in {moves}.',
+  'view.reset': 'Reset the view',
 } as const;
 
 export type MessageKey = keyof typeof en;
@@ -63,7 +156,62 @@ const ru: Record<MessageKey, string> = {
   'language.label': 'Язык',
   'cube.label': 'Кубик в 3D. Потяните, чтобы осмотреть его со всех сторон.',
 
-  'scramble.title': 'Скрэмбл',
+  'input.title': 'Состояние кубика',
+  'input.mode.scramble': 'Скрэмбл',
+  'input.mode.stickers': 'Наклейки',
+
+  'colour.U': 'белый',
+  'colour.R': 'красный',
+  'colour.F': 'зелёный',
+  'colour.D': 'жёлтый',
+  'colour.L': 'оранжевый',
+  'colour.B': 'синий',
+  'colour.unknown': 'не задан',
+
+  'face.U': 'верхняя',
+  'face.R': 'правая',
+  'face.F': 'передняя',
+  'face.D': 'нижняя',
+  'face.L': 'левая',
+  'face.B': 'задняя',
+
+  'stickers.hint.F':
+    'Держите кубик так: {facing} центр к себе, {top} сверху. Это исходное положение.',
+  'stickers.hint.R':
+    'Из исходного положения поверните кубик на четверть влево: {facing} центр к себе, {top} сверху.',
+  'stickers.hint.B':
+    'Из исходного положения поверните кубик на пол-оборота: {facing} центр к себе, {top} сверху.',
+  'stickers.hint.L':
+    'Из исходного положения поверните кубик на четверть вправо: {facing} центр к себе, {top} сверху.',
+  'stickers.hint.U':
+    'Из исходного положения наклоните кубик верхом к себе: {facing} центр к себе, {top} сверху.',
+  'stickers.hint.D':
+    'Из исходного положения наклоните кубик низом к себе: {facing} центр к себе, {top} сверху.',
+  'stickers.net': 'Развёртка кубика',
+  'stickers.faceLabel': '{face} грань',
+  'stickers.sticker': '{face} грань, ряд {row}, столбец {column}: {colour}',
+  'stickers.palette': 'Цвет',
+  'stickers.count': '{colour}: {count} из 9',
+  'stickers.keys':
+    'Клавиши Б Ж З С К О заполняют выбранную наклейку и переходят к следующей, стрелки — перемещение.',
+  'stickers.clear': 'Очистить',
+  'stickers.missing': 'Осталось заполнить наклеек: {count}',
+  'stickers.valid': 'Состояние корректно, можно решать.',
+  'stickers.error.colour-count': '{colour}: наклеек {count} вместо 9',
+  'stickers.error.invalid-corner': 'Угол {position}: такого сочетания цветов не бывает',
+  'stickers.error.mirrored-corner':
+    'Угол {position}: цвета идут в зеркальном порядке, одна из наклеек введена неверно',
+  'stickers.error.invalid-edge': 'Ребро {position}: такого сочетания цветов не бывает',
+  'stickers.error.duplicate-corner': 'Угол {piece} встречается больше одного раза',
+  'stickers.error.duplicate-edge': 'Ребро {piece} встречается больше одного раза',
+  'stickers.error.twisted-corner':
+    'Один угол повёрнут на месте. Проверьте наклейки; если они верны, кубик собран неправильно и без разборки не решается.',
+  'stickers.error.flipped-edge':
+    'Одно ребро перевёрнуто на месте. Проверьте наклейки; если они верны, кубик собран неправильно и без разборки не решается.',
+  'stickers.error.parity':
+    'Две детали поменяны местами. Проверьте наклейки; если они верны, кубик собран неправильно и без разборки не решается.',
+  'stickers.error.other': 'Эти наклейки не описывают кубик.',
+
   'scramble.label': 'Ходы в нотации WCA (срезы и широкие ходы SiGN тоже подходят)',
   'scramble.placeholder': "например, R U R' U' F2 D L2",
   'scramble.random': 'Случайное состояние',
@@ -105,6 +253,44 @@ const ru: Record<MessageKey, string> = {
   'playback.speed': 'Скорость',
   'playback.position': 'Ход {position} из {total}',
   'playback.keys': 'Пробел — пуск и пауза, стрелки — по ходу.',
+
+  'guide.hold': 'Держите кубик: {top} центр сверху, {front} — к себе.',
+  'guide.start': 'Делайте ходы на своём кубике по одному и после каждого нажимайте «Дальше».',
+  'guide.step': 'Ход {n} из {total}',
+  'guide.face.U': 'Верхняя грань',
+  'guide.face.R': 'Правая грань',
+  'guide.face.F': 'Передняя грань',
+  'guide.face.D': 'Нижняя грань',
+  'guide.face.L': 'Левая грань',
+  'guide.face.B': 'Задняя грань',
+  'guide.wide.U': 'Верхние {n} слоя',
+  'guide.wide.R': 'Правые {n} слоя',
+  'guide.wide.F': 'Передние {n} слоя',
+  'guide.wide.D': 'Нижние {n} слоя',
+  'guide.wide.L': 'Левые {n} слоя',
+  'guide.wide.B': 'Задние {n} слоя',
+  'guide.towards': 'Поверните так, чтобы {side} ушла {direction}.',
+  'guide.side.F': 'передняя сторона',
+  'guide.side.U': 'верхняя сторона',
+  'guide.direction.U': 'вверх',
+  'guide.direction.R': 'вправо',
+  'guide.direction.F': 'к вам',
+  'guide.direction.D': 'вниз',
+  'guide.direction.L': 'влево',
+  'guide.direction.B': 'от вас',
+  'guide.half': 'Пол-оборота, 180°, в любую сторону.',
+  'guide.clockwise': 'По часовой стрелке, если смотреть {from}.',
+  'guide.counterClockwise': 'Против часовой стрелки, если смотреть {from}.',
+  'guide.from.U': 'сверху',
+  'guide.from.R': 'справа',
+  'guide.from.F': 'спереди',
+  'guide.from.D': 'снизу',
+  'guide.from.L': 'слева',
+  'guide.from.B': 'сзади',
+  'guide.next': 'Дальше',
+  'guide.back': 'Назад',
+  'guide.done': 'Собрано за {moves}.',
+  'view.reset': 'Вернуть вид',
 };
 
 export const MESSAGES: Readonly<Record<Language, Readonly<Record<MessageKey, string>>>> = {

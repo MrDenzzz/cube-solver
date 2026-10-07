@@ -1,0 +1,110 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hint {
+  min-height: 3em;
+  margin: 0;
+  font-size: 13px;
+}
+
+.net {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-rows: repeat(3, auto);
+  gap: 4px;
+}
+
+.face {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  padding: 2px;
+  border-radius: 6px;
+}
+
+.face[data-active='true'] {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.sticker {
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 0;
+  background: var(--surface-2);
+  border: 1px solid rgb(0 0 0 / 0.25);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.sticker[data-unknown='true'] {
+  border: 1px dashed var(--muted);
+}
+
+.sticker[data-centre='true'] {
+  cursor: default;
+}
+
+.sticker[aria-current='true'] {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
+.sticker[data-error='true'] {
+  box-shadow:
+    0 0 0 2px var(--surface),
+    0 0 0 4px var(--danger);
+}
+
+.palette {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.colour {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px;
+  background: var(--surface-2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.colour[aria-checked='true'] {
+  border-color: var(--accent);
+}
+
+.swatch {
+  width: 26px;
+  height: 26px;
+  border: 1px solid rgb(0 0 0 / 0.25);
+  border-radius: 5px;
+}
+
+.count {
+  color: var(--muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.count[data-over='true'] {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+/* Keyboard entry only makes sense with a keyboard and a precise pointer. */
+.keys {
+  display: none;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .keys {
+    display: block;
+  }
+}

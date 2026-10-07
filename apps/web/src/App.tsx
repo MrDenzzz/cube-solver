@@ -7,40 +7,96 @@ import {
   type NotationError,
 } from '@cube/core';
 import type { SolveOptions } from '@cube/solver-contracts';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+} from 'react';
 import styles from './App.module.css';
 import type { TurnAnimation } from './cube3d/CubeModel.tsx';
+import { GuidePanel } from './guide/GuidePanel.tsx';
 import { useI18n } from './i18n/i18n.ts';
+import { InputPanel, type InputMode } from './panels/InputPanel.tsx';
 import { MovesPanel } from './panels/MovesPanel.tsx';
 import { PlaybackControls } from './panels/PlaybackControls.tsx';
-import { ScramblePanel } from './panels/ScramblePanel.tsx';
+import { ScrambleInput } from './panels/ScrambleInput.tsx';
 import { SolvePanel } from './panels/SolvePanel.tsx';
-import { cubeAt, INITIAL_PLAYBACK, playbackReducer, visibleTurn } from './playback/playback.ts';
+import {
+  faceletsAt,
+  INITIAL_PLAYBACK,
+  nextMove,
+  playbackReducer,
+  visibleTurn,
+} from './playback/playback.ts';
 import { useSolverStatus } from './solver/solver.ts';
 import { randomScramble, useSolveSession } from './solver/useSolveSession.ts';
+import { StickerEditor } from './stickers/StickerEditor.tsx';
+import { BLANK_STICKERS, checkStickers, isStickers } from './stickers/stickers.ts';
 import { LanguageSwitch } from './ui/LanguageSwitch.tsx';
+import { readStored, writeStored } from './ui/storage.ts';
+import { useWakeLock } from './ui/useWakeLock.ts';
 
 // three.js is most of the page's weight; the controls render while it loads.
 const CubeView = lazy(() => import('./cube3d/CubeView.tsx'));
 
 const QUARTER_TURN_MS = 320;
 const REPOSITORY = 'https://github.com/MrDenzzz/cube-solver';
+const STICKERS_KEY = 'cube-solver.stickers';
+
+const outerTurns = (moves: readonly FaceTurn[]) =>
+  moves.map(({ face, turns }) => ({ face, from: 1, to: 1, turns }));
+
+function storedStickers(): string {
+  const stored = readStored(STICKERS_KEY);
+  return stored !== null && isStickers(stored) ? stored : BLANK_STICKERS;
+}
 
 export function App() {
   const { t } = useI18n();
   const status = useSolverStatus();
+  const [mode, setMode] = useState<InputMode>('scramble');
   const [text, setText] = useState('');
   const [errors, setErrors] = useState<readonly NotationError[]>([]);
   const [scrambled, setScrambled] = useState<CubieCube>(SOLVED);
+  const [stickers, setStickers] = useState(storedStickers);
   const [playback, dispatch] = useReducer(playbackReducer, INITIAL_PLAYBACK);
   const [options, setOptions] = useState<SolveOptions>({ maxLength: 20, timeLimitMs: 2000 });
   const [speed, setSpeed] = useState(1);
   const [generating, setGenerating] = useState(false);
+  const [viewKey, setViewKey] = useState(0);
+  const stage = useRef<HTMLElement>(null);
 
-  const onSolved = useCallback((cube: CubieCube, moves: readonly FaceTurn[]) => {
-    dispatch({ type: 'load', start: cube, moves });
+  const stickerCheck = useMemo(() => checkStickers(stickers), [stickers]);
+  const cube: CubieCube | null =
+    mode === 'scramble'
+      ? errors.length === 0
+        ? scrambled
+        : null
+      : stickerCheck.kind === 'valid'
+        ? stickerCheck.cube
+        : null;
+
+  const onSolved = useCallback((solved: CubieCube, moves: readonly FaceTurn[]) => {
+    dispatch({ type: 'load', size: 3, start: toFacelets(solved), moves: outerTurns(moves) });
+    // Following the solution starts from the reference hold, so the view starts there too.
+    setViewKey((key) => key + 1);
+    stage.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, []);
   const { session, solve, cancel, reset } = useSolveSession(onSolved);
+
+  /** Shows a new state to solve, dropping the previous solution. */
+  const show = useCallback(
+    (facelets: string) => {
+      reset();
+      dispatch({ type: 'load', size: 3, start: facelets, moves: [] });
+    },
+    [reset],
+  );
 
   // An invalid scramble keeps the last valid cube on screen while the errors are shown.
   const changeScramble = useCallback(
@@ -53,11 +109,26 @@ export function App() {
       }
       setErrors([]);
       setScrambled(parsed.value);
-      reset();
-      dispatch({ type: 'load', start: parsed.value, moves: [] });
+      show(toFacelets(parsed.value));
     },
-    [reset],
+    [show],
   );
+
+  // Half-entered stickers are shown as they are, unknown ones in grey.
+  const changeStickers = useCallback(
+    (value: string) => {
+      setStickers(value);
+      writeStored(STICKERS_KEY, value);
+      show(value);
+    },
+    [show],
+  );
+
+  const changeMode = (next: InputMode) => {
+    setMode(next);
+    if (next === 'scramble') show(toFacelets(scrambled));
+    else show(stickers);
+  };
 
   const generate = useCallback(() => {
     setGenerating(true);
@@ -91,11 +162,10 @@ export function App() {
     };
   }, []);
 
-  const { start, moves, position, animating } = playback;
-  const facelets = useMemo(
-    () => toFacelets(cubeAt(start, moves, position)),
-    [start, moves, position],
-  );
+  const { moves, animating, playing } = playback;
+  useWakeLock(moves.length > 0);
+  const facelets = useMemo(() => faceletsAt(playback), [playback]);
+  const hint = animating === null && !playing ? nextMove(playback) : null;
 
   const onAnimationDone = useCallback(() => {
     dispatch({ type: 'animation-done' });
@@ -135,17 +205,29 @@ export function App() {
         </div>
       </header>
       <main className={styles.main}>
-        <section className={styles.stage}>
+        <section className={styles.stage} ref={stage}>
           <div className={styles.canvas}>
             <Suspense fallback={null}>
               <CubeView
-                size={3}
+                size={playback.size}
                 facelets={facelets}
                 animation={animation}
+                hint={hint}
+                viewKey={viewKey}
                 label={t('cube.label')}
               />
             </Suspense>
+            <button
+              type="button"
+              className={styles.resetView}
+              onClick={() => {
+                setViewKey((key) => key + 1);
+              }}
+            >
+              {t('view.reset')}
+            </button>
           </div>
+          {moves.length > 0 && <GuidePanel playback={playback} dispatch={dispatch} />}
           <PlaybackControls
             playback={playback}
             dispatch={dispatch}
@@ -154,29 +236,36 @@ export function App() {
           />
         </section>
         <div className={styles.panel}>
-          <ScramblePanel
-            text={text}
-            errors={errors}
-            generating={generating}
-            canGenerate={status.kind === 'ready'}
-            onChange={changeScramble}
-            onRandom={generate}
-          />
+          <InputPanel mode={mode} onModeChange={changeMode}>
+            {mode === 'scramble' ? (
+              <ScrambleInput
+                text={text}
+                errors={errors}
+                generating={generating}
+                canGenerate={status.kind === 'ready'}
+                onChange={changeScramble}
+                onRandom={generate}
+              />
+            ) : (
+              <StickerEditor stickers={stickers} check={stickerCheck} onChange={changeStickers} />
+            )}
+          </InputPanel>
           <SolvePanel
             status={status}
             session={session}
             options={options}
-            canSolve={errors.length === 0}
+            canSolve={cube !== null}
             onOptionsChange={setOptions}
             onSolve={() => {
-              solve(scrambled, options);
+              if (cube !== null) solve(cube, options);
             }}
             onCancel={cancel}
           />
           {moves.length > 0 && (
             <MovesPanel
               moves={moves}
-              position={position}
+              size={playback.size}
+              position={playback.position}
               onSeek={(target) => {
                 dispatch({ type: 'seek', position: target });
               }}

@@ -21,7 +21,7 @@ function describe(error: NotationError, t: I18n['t']): string {
   }
 }
 
-export function ScramblePanel({
+export function ScrambleInput({
   text,
   errors,
   generating,
@@ -39,8 +39,7 @@ export function ScramblePanel({
   const { t } = useI18n();
   const errorsId = useId();
   return (
-    <section className={styles.card}>
-      <h2 className={styles.cardTitle}>{t('scramble.title')}</h2>
+    <>
       <label className={styles.label}>
         {t('scramble.label')}
         <textarea
@@ -84,6 +83,6 @@ export function ScramblePanel({
           {t('scramble.clear')}
         </button>
       </div>
-    </section>
+    </>
   );
 }

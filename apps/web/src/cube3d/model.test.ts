@@ -1,6 +1,6 @@
 import { FACES } from '@cube/core';
 import { describe, expect, it } from 'vitest';
-import { buildCubies, easeInOutCubic, layerMembers, turnAngle } from './model.ts';
+import { buildCubies, easeInOutCubic, layerMembers, turnAngle, turnArrows } from './model.ts';
 
 describe('cube model for rendering', () => {
   it('has the 26 visible cubies of a 3×3×3 with 1, 2 or 3 stickers each', () => {
@@ -33,5 +33,27 @@ describe('cube model for rendering', () => {
     expect(easeInOutCubic(0)).toBe(0);
     expect(easeInOutCubic(0.5)).toBeCloseTo(0.5);
     expect(easeInOutCubic(1)).toBe(1);
+  });
+
+  it('points the arrows the way the stickers move', () => {
+    // R moves the front column up and the top column back; R' the other way.
+    const r = turnArrows(3, { face: 'R', from: 1, to: 1, turns: 1 });
+    expect(r.map((a) => a.face).sort()).toEqual(['B', 'D', 'F', 'U']);
+    expect(r.find((a) => a.face === 'F')?.direction).toEqual([0, 1, 0]);
+    expect(r.find((a) => a.face === 'U')?.direction).toEqual([0, 0, -1]);
+    const rPrime = turnArrows(3, { face: 'R', from: 1, to: 1, turns: 3 });
+    expect(rPrime.find((a) => a.face === 'F')?.direction).toEqual([0, -1, 0]);
+    // U moves the front row to the left.
+    const u = turnArrows(3, { face: 'U', from: 1, to: 1, turns: 1 });
+    expect(u.find((a) => a.face === 'F')?.direction).toEqual([-1, 0, 0]);
+    expect(u.every((a) => !a.twoWay)).toBe(true);
+  });
+
+  it('places arrows on the outer surface, centred on the turning layers', () => {
+    const [arrow] = turnArrows(3, { face: 'U', from: 1, to: 1, turns: 2 });
+    expect(arrow?.twoWay).toBe(true);
+    expect(arrow?.centre[1]).toBe(2);
+    const wide = turnArrows(4, { face: 'R', from: 1, to: 2, turns: 1 });
+    expect(wide.find((a) => a.face === 'F')?.centre).toEqual([2, 0, 4]);
   });
 });

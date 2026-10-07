@@ -1,25 +1,31 @@
-import { applyAlgorithm, equals, SOLVED, type CubieCube, type FaceTurn } from '@cube/core';
+import { applyAlgorithm, SOLVED, SOLVED_FACELETS, toFacelets, type LayerTurn } from '@cube/core';
 import { describe, expect, it } from 'vitest';
 import {
-  cubeAt,
+  faceletsAt,
   INITIAL_PLAYBACK,
+  nextMove,
   playbackReducer,
   type Playback,
   type PlaybackAction,
 } from './playback.ts';
 
-const R: FaceTurn = { face: 'R', turns: 1 };
-const U2: FaceTurn = { face: 'U', turns: 2 };
-const F3: FaceTurn = { face: 'F', turns: 3 };
+const R: LayerTurn = { face: 'R', from: 1, to: 1, turns: 1 };
+const U2: LayerTurn = { face: 'U', from: 1, to: 1, turns: 2 };
+const F3: LayerTurn = { face: 'F', from: 1, to: 1, turns: 3 };
 
 const run = (state: Playback, ...actions: PlaybackAction[]) =>
   actions.reduce(playbackReducer, state);
-const loaded = run(INITIAL_PLAYBACK, { type: 'load', start: SOLVED, moves: [R, U2, F3] });
+const loaded = run(INITIAL_PLAYBACK, {
+  type: 'load',
+  size: 3,
+  start: SOLVED_FACELETS,
+  moves: [R, U2, F3],
+});
 
-function after(algorithm: string): CubieCube {
+function after(algorithm: string): string {
   const result = applyAlgorithm(SOLVED, algorithm);
   if (!result.ok) throw new Error(algorithm);
-  return result.value;
+  return toFacelets(result.value);
 }
 
 describe('playback', () => {
@@ -29,7 +35,8 @@ describe('playback', () => {
     expect(stepping.position).toBe(0);
     const landed = run(stepping, { type: 'animation-done' });
     expect(landed.position).toBe(1);
-    expect(equals(cubeAt(landed.start, landed.moves, landed.position), after('R'))).toBe(true);
+    expect(faceletsAt(landed)).toBe(after('R'));
+    expect(nextMove(landed)).toEqual(U2);
   });
 
   it('ignores steps while a move is animating', () => {
@@ -49,7 +56,8 @@ describe('playback', () => {
     expect(state.position).toBe(3);
     expect(state.playing).toBe(false);
     expect(state.animating).toBeNull();
-    expect(equals(cubeAt(state.start, state.moves, state.position), after("R U2 F'"))).toBe(true);
+    expect(faceletsAt(state)).toBe(after("R U2 F'"));
+    expect(nextMove(state)).toBeNull();
   });
 
   it('restarts from the scramble when played at the end', () => {

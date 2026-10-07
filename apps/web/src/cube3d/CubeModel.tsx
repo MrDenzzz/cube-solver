@@ -1,22 +1,17 @@
-import { faceNormal, isFace, type Face, type FaceTurn } from '@cube/core';
+import { faceNormal, isFace, type Face, type LayerTurn } from '@cube/core';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
-import { buildCubies, easeInOutCubic, layerMembers, turnAngle, type CubieModel } from './model.ts';
-
-/** World units per grid unit: cubie centres are two grid units apart, so cubies are 1 unit wide. */
-const SPACING = 0.5;
-
-// Standard colour scheme: white opposite yellow, green opposite blue, red opposite orange.
-const COLOURS: Readonly<Record<Face, string>> = {
-  U: '#f4f4f2',
-  R: '#c8102e',
-  F: '#009b48',
-  D: '#ffd500',
-  L: '#ff5800',
-  B: '#0046ad',
-};
+import { FACE_COLOURS } from '../scheme.ts';
+import {
+  buildCubies,
+  easeInOutCubic,
+  layerMembers,
+  SPACING,
+  turnAngle,
+  type CubieModel,
+} from './model.ts';
 
 const bodyGeometry = new RoundedBoxGeometry(0.96, 0.96, 0.96, 4, 0.1);
 const bodyMaterial = new THREE.MeshStandardMaterial({ color: '#17181c', roughness: 0.6 });
@@ -38,18 +33,21 @@ const stickerGeometry = (() => {
 })();
 
 const stickerMaterials = Object.fromEntries(
-  Object.entries(COLOURS).map(([face, colour]) => [
+  Object.entries(FACE_COLOURS).map(([face, colour]) => [
     face,
     new THREE.MeshStandardMaterial({ color: colour, roughness: 0.35 }),
   ]),
 ) as Record<Face, THREE.MeshStandardMaterial>;
+
+// Stickers not entered yet: a neutral grey that reads as "no colour" against the black body.
+const unknownMaterial = new THREE.MeshStandardMaterial({ color: '#5f636b', roughness: 0.8 });
 
 const Z = new THREE.Vector3(0, 0, 1);
 
 export interface TurnAnimation {
   /** Stays the same for one move; a new key starts a new turn, so speed changes wait for it. */
   readonly key: object;
-  readonly turn: FaceTurn;
+  readonly turn: LayerTurn;
   readonly durationMs: number;
   readonly onDone: () => void;
 }
@@ -138,7 +136,7 @@ export function CubeModel({
     const { key, turn, durationMs, onDone } = animation;
     running.current = {
       key,
-      members: layerMembers(cubies, size, turn.face),
+      members: layerMembers(cubies, size, turn.face, turn.from, turn.to),
       axis: new THREE.Vector3(...faceNormal(turn.face)),
       angle: turnAngle(turn.turns),
       start: performance.now(),
@@ -185,7 +183,7 @@ export function CubeModel({
               <mesh
                 key={facelet}
                 geometry={stickerGeometry}
-                material={isFace(face) ? stickerMaterials[face] : bodyMaterial}
+                material={isFace(face) ? stickerMaterials[face] : unknownMaterial}
                 position={position}
                 quaternion={quaternion}
               />

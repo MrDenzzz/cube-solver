@@ -1,4 +1,4 @@
-import { formatFaceTurns, type FaceTurn } from '@cube/core';
+import { formatMove, toMove, type LayerTurn } from '@cube/core';
 import { useI18n } from '../i18n/i18n.ts';
 import ui from '../ui/ui.module.css';
 import styles from './MovesPanel.module.css';
@@ -6,10 +6,12 @@ import styles from './MovesPanel.module.css';
 /** The solution as clickable moves; clicking one shows the cube right after it. */
 export function MovesPanel({
   moves,
+  size,
   position,
   onSeek,
 }: {
-  readonly moves: readonly FaceTurn[];
+  readonly moves: readonly LayerTurn[];
+  readonly size: number;
   readonly position: number;
   readonly onSeek: (position: number) => void;
 }) {
@@ -32,7 +34,7 @@ export function MovesPanel({
                 onSeek(index + 1);
               }}
             >
-              {formatFaceTurns([move])}
+              {formatMove(toMove(move, size))}
             </button>
           </li>
         ))}
