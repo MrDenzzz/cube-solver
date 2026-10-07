@@ -2,9 +2,11 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { applyLayerTurns, type LayerTurn } from './algorithm.ts';
 import {
+  applyAlgorithm4,
   applyLayerTurns4,
   cube4ToFacelets,
   isSolved4,
+  MOVES_4,
   parseFacelets4,
   randomCube4,
   SOLVED_4,
@@ -74,5 +76,27 @@ describe('4×4×4 pieces', () => {
     const wing = parseFacelets4(swap(solved, ref, other));
     expect(!wing.ok && wing.errors.map((e) => e.code)).toEqual(['duplicate-wing']);
     expect(STICKERS_4).toBe(96);
+  });
+
+  it('applies algorithms in WCA notation, wide moves and inner slices included', () => {
+    const result = applyAlgorithm4(SOLVED_4, "Rw U2 3Rw' 2R x Uw'");
+    expect(result.ok).toBe(true);
+    const expected = applyLayerTurns4(SOLVED_4, [
+      { face: 'R', from: 1, to: 2, turns: 1 },
+      { face: 'U', from: 1, to: 1, turns: 2 },
+      { face: 'R', from: 1, to: 3, turns: 3 },
+      { face: 'R', from: 2, to: 2, turns: 1 },
+      { face: 'R', from: 1, to: 4, turns: 1 },
+      { face: 'U', from: 1, to: 2, turns: 3 },
+    ]);
+    expect(result.ok && result.value).toEqual(expected);
+    const middle = applyAlgorithm4(SOLVED_4, 'R M');
+    expect(!middle.ok && middle.errors.map((e) => e.code)).toEqual(['layer-out-of-range']);
+  });
+
+  it('numbers the solver moves: outer turns in face turn order, then Uw, Rw, Fw', () => {
+    expect(MOVES_4).toHaveLength(27);
+    expect(MOVES_4[3]).toEqual({ face: 'R', from: 1, to: 1, turns: 1 });
+    expect(MOVES_4[22]).toEqual({ face: 'R', from: 1, to: 2, turns: 2 });
   });
 });

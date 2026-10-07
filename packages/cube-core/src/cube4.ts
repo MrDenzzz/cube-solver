@@ -1,4 +1,4 @@
-import type { LayerTurn } from './algorithm.ts';
+import { toLayerTurns, type LayerTurn } from './algorithm.ts';
 import { CORNER_FACES, EDGE_FACES, multiply, type CubieCube } from './cubie.ts';
 import {
   FACES,
@@ -15,6 +15,7 @@ import {
 import { inverseTurns, MOVE_CUBES, faceTurnIndex, type Turns } from './moves.ts';
 import type { Rng } from './random.ts';
 import { nextBelow } from './random.ts';
+import { parseAlgorithm, type NotationError, type NotationMode } from './notation.ts';
 import { at, err, ok, symbols, type Result } from './util.ts';
 
 // The 4×4×4 at piece level: 8 corners (as on the 3×3×3), 24 wing edges, two per edge position,
@@ -165,6 +166,32 @@ export function applyLayerTurn4(cube: Cube4, turn: LayerTurn): Cube4 {
 export function applyLayerTurns4(cube: Cube4, turns: readonly LayerTurn[]): Cube4 {
   return turns.reduce(applyLayerTurn4, cube);
 }
+
+/** Parses an algorithm and applies it to a 4×4×4 state. */
+export function applyAlgorithm4(
+  cube: Cube4,
+  text: string,
+  mode: NotationMode = 'extended',
+): Result<Cube4, NotationError> {
+  const parsed = parseAlgorithm(text, mode);
+  if (!parsed.ok) return parsed;
+  const turns = toLayerTurns(parsed.value, SIZE);
+  return turns.ok ? ok(applyLayerTurns4(cube, turns.value)) : turns;
+}
+
+const TURNS: readonly Turns[] = [1, 2, 3];
+
+/**
+ * The turns the 4×4×4 solver makes, numbered for passing between threads: the 18 outer turns in
+ * face turn order (U, U2, U′, R, …), then the wide turns Uw, Rw and Fw with their powers. Wide
+ * turns of the other three faces are not needed without fixed centres.
+ */
+export const MOVES_4: readonly LayerTurn[] = [
+  ...FACES.flatMap((face) => TURNS.map((turns) => ({ face, from: 1, to: 1, turns }))),
+  ...(['U', 'R', 'F'] as const).flatMap((face) =>
+    TURNS.map((turns) => ({ face, from: 1, to: 2, turns })),
+  ),
+];
 
 /**
  * Which way round each wing shows its colours in each slot: 0 if its reference colour is on the

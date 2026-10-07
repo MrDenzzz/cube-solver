@@ -1,6 +1,12 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { applyLayerTurns, toLayerTurn, toMove, type LayerTurn } from './algorithm.ts';
+import {
+  applyLayerTurns,
+  simplifyLayerTurns,
+  toLayerTurn,
+  toMove,
+  type LayerTurn,
+} from './algorithm.ts';
 import { SOLVED } from './cubie.ts';
 import { SOLVED_FACELETS, toFacelets } from './facelets.ts';
 import { FACES, solvedFacelets } from './geometry.ts';
@@ -80,5 +86,46 @@ describe('toMove', () => {
 
   it('rejects inner blocks, which have no single name', () => {
     expect(() => toMove({ face: 'R', from: 2, to: 3, turns: 1 }, 5)).toThrow(RangeError);
+  });
+});
+
+describe('simplifyLayerTurns', () => {
+  const turn = (face: LayerTurn['face'], turns: LayerTurn['turns'], to = 1): LayerTurn => ({
+    face,
+    from: 1,
+    to,
+    turns,
+  });
+
+  it('cancels a turn and its inverse, and merges across turns on the same axis', () => {
+    expect(simplifyLayerTurns([turn('U', 1), turn('U', 3)], 3)).toEqual([]);
+    expect(simplifyLayerTurns([turn('R', 1), turn('L', 1), turn('R', 1)], 3)).toEqual([
+      turn('R', 2),
+      turn('L', 1),
+    ]);
+    expect(simplifyLayerTurns([turn('R', 1), turn('U', 1), turn('U', 3), turn('R', 3)], 3)).toEqual(
+      [],
+    );
+  });
+
+  it('matches the far layer named from the opposite face', () => {
+    // On the 4×4×4, layer 4 of U is the outer layer of D, turned the other way.
+    const far: LayerTurn = { face: 'U', from: 4, to: 4, turns: 1 };
+    expect(simplifyLayerTurns([turn('D', 1), far], 4)).toEqual([]);
+    expect(simplifyLayerTurns([turn('U', 1, 2), turn('U', 3)], 4)).toHaveLength(2);
+  });
+
+  it('never changes what a sequence does', () => {
+    fc.assert(
+      fc.property(fc.integer({ min: 2, max: 5 }), fc.nat(), (size, seed) => {
+        const sequence = fc.sample(layerTurn(size), { numRuns: 12, seed });
+        const stickers = solvedFacelets(size);
+        const simplified = simplifyLayerTurns(sequence, size);
+        expect(simplified.length).toBeLessThanOrEqual(sequence.length);
+        expect(applyLayerTurns(stickers, size, simplified)).toBe(
+          applyLayerTurns(stickers, size, sequence),
+        );
+      }),
+    );
   });
 });

@@ -2,7 +2,9 @@ export {
   applyAlgorithm,
   applyLayerTurns,
   expandTo3x3,
+  simplifyLayerTurns,
   toLayerTurn,
+  toLayerTurns,
   toMove,
   type LayerTurn,
 } from './algorithm.ts';
@@ -23,12 +25,14 @@ export {
   type EdgeName,
 } from './cubie.ts';
 export {
+  applyAlgorithm4,
   applyLayerTurn4,
   applyLayerTurns4,
   CENTRE_FACELETS,
   CORNER_FACELETS_4,
   cube4ToFacelets,
   isSolved4,
+  MOVES_4,
   parseFacelets4,
   randomCube4,
   slotPermutations,

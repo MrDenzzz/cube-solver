@@ -18,7 +18,7 @@ import {
   type NotationMode,
   type ParsedMove,
 } from './notation.ts';
-import { err, ok, symbols, type Result } from './util.ts';
+import { at, err, ok, symbols, type Result } from './util.ts';
 
 /** Layers `from`..`to` of `face` (1 = outer layer), turned clockwise as seen from `face`. */
 export interface LayerTurn {
@@ -68,6 +68,48 @@ export function toMove(turn: LayerTurn, size: number): Move {
   if (from === to) return { kind: 'slice', face, layer: from, turns };
   throw new RangeError(`Layers ${String(from)}..${String(to)} of ${face} have no single move name`);
 }
+
+const AXIS_FACES: readonly Face[] = ['U', 'R', 'F'];
+
+/** The same turn named from the axis's first face (U, R or F). */
+function fromAxisFace(turn: LayerTurn, size: number): LayerTurn {
+  if (AXIS_FACES.includes(turn.face)) return turn;
+  return {
+    face: OPPOSITE[turn.face],
+    from: size + 1 - turn.to,
+    to: size + 1 - turn.from,
+    turns: inverseTurns(turn.turns),
+  };
+}
+
+/**
+ * Merges turns of the same layers that meet, also across turns on the same axis, which commute:
+ * `R L R` becomes `R2 L`, and `U U′` disappears. Sequences joined from separate searches meet
+ * this way at the seams.
+ */
+export function simplifyLayerTurns(turns: readonly LayerTurn[], size: number): LayerTurn[] {
+  const out: LayerTurn[] = [];
+  for (const turn of turns) {
+    const next = fromAxisFace(turn, size);
+    let merged = false;
+    for (let i = out.length - 1; i >= 0; i--) {
+      const previous = fromAxisFace(at(out, i), size);
+      if (previous.face !== next.face) break;
+      if (previous.from !== next.from || previous.to !== next.to) continue;
+      const sum = (previous.turns + next.turns) % 4;
+      if (sum === 0) out.splice(i, 1);
+      else out[i] = { ...at(out, i), turns: named(at(out, i).face, sum as Turns) };
+      merged = true;
+      break;
+    }
+    if (!merged) out.push(turn);
+  }
+  return out;
+}
+
+/** Turns about the axis face, as turns of `face`. */
+const named = (face: Face, turns: Turns): Turns =>
+  AXIS_FACES.includes(face) ? turns : inverseTurns(turns);
 
 const permutations = new Map<string, readonly number[]>();
 
@@ -132,6 +174,24 @@ function expandLayerTurn(turn: LayerTurn, frame: Frame): { turns: FaceTurn[]; fr
   if (!covers(1)) out.push({ face: near, turns: inverseTurns(turns) });
   if (!covers(3)) out.push({ face: far, turns });
   return { turns: out, frame: rotateFrame(frame, face, turns) };
+}
+
+/** The layers each move turns on an N×N×N cube; moves it lacks the layers for are errors. */
+export function toLayerTurns(
+  moves: readonly ParsedMove[],
+  size: number,
+): Result<LayerTurn[], NotationError> {
+  const errors: NotationError[] = [];
+  const turns: LayerTurn[] = [];
+  for (const { move, start, end } of moves) {
+    const turn = toLayerTurn(move, size);
+    if (turn === undefined) {
+      errors.push({ code: 'layer-out-of-range', start, end, token: formatMove(move), size });
+    } else {
+      turns.push(turn);
+    }
+  }
+  return errors.length > 0 ? err(errors) : ok(turns);
 }
 
 /** Face turns, relative to the centres, equivalent to an algorithm on a 3×3×3. */
