@@ -40,7 +40,10 @@ export function GuidePanel({
   return (
     <section className={styles.guide}>
       <p className={ui.muted}>
-        {t('guide.hold', { top: colourName('U', t), front: colourName('F', t) })}
+        {/* A 4×4×4 has no fixed centres to hold it by. */}
+        {playback.size === 3
+          ? t('guide.hold', { top: colourName('U', t), front: colourName('F', t) })
+          : t('guide.hold4')}
         {position === 0 && ` ${t('guide.start')}`}
       </p>
       <div className={styles.step} aria-live="polite">

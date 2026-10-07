@@ -1,19 +1,33 @@
-import { applyAlgorithm, SOLVED, SOLVED_FACELETS, toFacelets } from '@cube/core';
+import {
+  applyAlgorithm,
+  applyAlgorithm4,
+  cube4ToFacelets,
+  solvedFacelets,
+  SOLVED,
+  SOLVED_4,
+  SOLVED_FACELETS,
+  toFacelets,
+  WING_FACELETS,
+  type Face,
+} from '@cube/core';
 import { describe, expect, it } from 'vitest';
 import { UNKNOWN } from '../scheme.ts';
 import {
   BLANK_STICKERS,
+  blankStickers,
   checkStickers,
+  checkStickers4,
   colourCounts,
   colourForKey,
-  errorFacelets,
   isStickers,
   netCell,
   nextSticker,
   paint,
-  STICKER_COUNT,
+  stickerCount,
   stickerToward,
 } from './stickers.ts';
+
+const faceAt = (stickers: string, facelet: number) => stickers.charAt(facelet) as Face;
 
 const scrambled = (() => {
   const result = applyAlgorithm(SOLVED, "R U R' U' F2 D L2 B'");
@@ -45,10 +59,8 @@ describe('sticker input', () => {
     const check = checkStickers(broken);
     expect(check.kind).toBe('invalid');
     if (check.kind !== 'invalid') return;
-    expect(check.errors.map((e) => e.code)).toEqual(['mirrored-corner']);
-    expect([...errorFacelets(check.errors[0] ?? { code: 'parity' })].sort((a, b) => a - b)).toEqual(
-      [8, 9, 20],
-    );
+    expect(check.problems).toHaveLength(1);
+    expect([...(check.problems[0]?.facelets ?? [])].sort((a, b) => a - b)).toEqual([8, 9, 20]);
   });
 
   it('rejects strings that are not sticker input', () => {
@@ -70,8 +82,8 @@ describe('sticker input', () => {
     expect(netCell(0)).toEqual([0, 3]); // U1
     expect(netCell(18)).toEqual([3, 3]); // F1
     expect(netCell(53)).toEqual([5, 11]); // B9
-    expect(new Set(Array.from({ length: STICKER_COUNT }, (_, i) => netCell(i).join())).size).toBe(
-      STICKER_COUNT,
+    expect(new Set(Array.from({ length: stickerCount(3) }, (_, i) => netCell(i).join())).size).toBe(
+      stickerCount(3),
     );
     expect(stickerToward(6, 1, 0)).toBe(18); // U7 down to F1
     expect(stickerToward(20, 0, 1)).toBe(9); // F3 right to R1
@@ -84,5 +96,44 @@ describe('sticker input', () => {
     expect(colourForKey('с')).toBe('B');
     expect(colourForKey('о')).toBe('L');
     expect(colourForKey('x')).toBeUndefined();
+  });
+
+  describe('on the 4×4×4', () => {
+    it('starts blank, centres included, and lets every sticker be painted', () => {
+      const blank = blankStickers(4);
+      expect(blank).toBe('.'.repeat(96));
+      expect(isStickers(blank, 4)).toBe(true);
+      expect(paint(blank, 5, 'R', 4).charAt(5)).toBe('R');
+      expect(checkStickers4(blank)).toEqual({ kind: 'incomplete', missing: 96 });
+    });
+
+    it('accepts a scrambled cube and points at a broken wing', () => {
+      const scrambled4 = applyAlgorithm4(SOLVED_4, "Rw U2 Fw' L 2R D' Uw2");
+      if (!scrambled4.ok) throw new Error('bad scramble');
+      const facelets = cube4ToFacelets(scrambled4.value);
+      expect(checkStickers4(facelets).kind).toBe('valid');
+      // A wing flipped in place shows what its partner shows: the partner is then highlighted
+      // as appearing twice.
+      const [ref = 0, other = 0] = WING_FACELETS[0] ?? [];
+      const solved = solvedFacelets(4);
+      const flipped = paint(
+        paint(solved, ref, faceAt(solved, other), 4),
+        other,
+        faceAt(solved, ref),
+        4,
+      );
+      const check = checkStickers4(flipped);
+      expect(check.kind === 'invalid' && check.problems.map((p) => p.facelets)).toEqual([
+        WING_FACELETS[1],
+      ]);
+    });
+
+    it('walks the net and types a face in reading order', () => {
+      expect(netCell(0, 4)).toEqual([0, 4]);
+      expect(new Set(Array.from({ length: 96 }, (_, i) => netCell(i, 4).join())).size).toBe(96);
+      expect(nextSticker(32, 4)).toBe(33); // F1 → F2, centres included
+      expect(nextSticker(47, 4)).toBe(16); // F16 → R1
+      expect(stickerToward(12, 1, 0, 4)).toBe(32); // U13 down to F1
+    });
   });
 });

@@ -1,22 +1,22 @@
 import { FACES, isFace, type Face } from '@cube/core';
-import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { useI18n } from '../i18n/i18n.ts';
 import { FACE_COLOURS, UNKNOWN } from '../scheme.ts';
 import { cx } from '../ui/cx.ts';
 import ui from '../ui/ui.module.css';
-import { capitalise, colourName, describeCubeError } from './describe.ts';
+import { capitalise, colourName } from './describe.ts';
 import styles from './StickerEditor.module.css';
 import {
-  BLANK_STICKERS,
+  blankStickers,
   colourCounts,
   colourForKey,
-  errorFacelets,
   faceOf,
-  isCentre,
+  isFixed,
   netCell,
   nextSticker,
   paint,
   stickerToward,
+  type PuzzleSize,
   type StickerCheck,
 } from './stickers.ts';
 
@@ -33,33 +33,35 @@ const ARROWS: Readonly<Record<string, readonly [number, number]>> = {
   ArrowRight: [0, 1],
 };
 
-const STICKERS_PER_FACE = 9;
-const FIRST_FRONT_STICKER = FACES.indexOf('F') * STICKERS_PER_FACE;
-
 /**
  * The cube unfolded, painted sticker by sticker. Clicking paints with the selected colour; on a
  * keyboard, colour initials paint the selected sticker and move on in reading order, so a face
- * can be typed in as nine letters.
+ * can be typed in letter by letter. Remount it (a `key`) when the size changes.
  */
 export function StickerEditor({
+  size,
   stickers,
   check,
   onChange,
 }: {
+  readonly size: PuzzleSize;
   readonly stickers: string;
-  readonly check: StickerCheck;
+  readonly check: StickerCheck<unknown>;
   readonly onChange: (stickers: string) => void;
 }) {
   const { t } = useI18n();
+  const perFace = size * size;
+  const firstFront = FACES.indexOf('F') * perFace;
+  const blank = useMemo(() => blankStickers(size), [size]);
   const [brush, setBrush] = useState<Face>('U');
-  const [cursor, setCursor] = useState(FIRST_FRONT_STICKER);
+  const [cursor, setCursor] = useState(firstFront);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const counts = colourCounts(stickers);
   const highlighted = useMemo(
-    () => new Set(check.kind === 'invalid' ? check.errors.flatMap(errorFacelets) : []),
+    () => new Set(check.kind === 'invalid' ? check.problems.flatMap((p) => p.facelets) : []),
     [check],
   );
-  const activeFace = faceOf(cursor);
+  const activeFace = faceOf(cursor, size);
 
   const moveTo = (facelet: number) => {
     setCursor(facelet);
@@ -71,13 +73,13 @@ export function StickerEditor({
     const step = ARROWS[event.key];
     const colour = colourForKey(event.key);
     if (step !== undefined) {
-      moveTo(stickerToward(cursor, step[0], step[1]));
+      moveTo(stickerToward(cursor, step[0], step[1], size));
     } else if (event.key === 'Backspace' || event.key === 'Delete') {
-      onChange(paint(stickers, cursor, UNKNOWN));
+      onChange(paint(stickers, cursor, UNKNOWN, size));
     } else if (colour !== undefined) {
       setBrush(colour);
-      onChange(paint(stickers, cursor, colour));
-      moveTo(nextSticker(cursor));
+      onChange(paint(stickers, cursor, colour, size));
+      moveTo(nextSticker(cursor, size));
     } else {
       return;
     }
@@ -86,41 +88,51 @@ export function StickerEditor({
 
   const stickerLabel = (facelet: number) => {
     const symbol = stickers.charAt(facelet);
-    const index = facelet % STICKERS_PER_FACE;
+    const index = facelet % perFace;
     return capitalise(
       t('stickers.sticker', {
-        face: t(`face.${faceOf(facelet)}`),
-        row: Math.floor(index / 3) + 1,
-        column: (index % 3) + 1,
+        face: t(`face.${faceOf(facelet, size)}`),
+        row: Math.floor(index / size) + 1,
+        column: (index % size) + 1,
         colour: isFace(symbol) ? colourName(symbol, t) : t('colour.unknown'),
       }),
     );
   };
 
-  return (
-    <div className={styles.editor}>
-      <p className={styles.hint}>
-        {t(`stickers.hint.${activeFace}`, {
+  // A 3×3×3 is held by its fixed centres; a 4×4×4 has none, so its hints only name positions.
+  const hint =
+    size === 3
+      ? t(`stickers.hint.${activeFace}`, {
           facing: colourName(activeFace, t),
           top: colourName(TOP[activeFace], t),
-        })}
-      </p>
+        })
+      : t(`stickers.hint4.${activeFace}`);
+
+  return (
+    <div className={styles.editor}>
+      <p className={styles.hint}>{hint}</p>
 
       {/* One tab stop for the whole net: arrow keys move inside it. */}
-      <div className={styles.net} role="group" aria-label={t('stickers.net')} onKeyDown={onKeyDown}>
+      <div
+        className={styles.net}
+        style={{ '--size': size } as CSSProperties}
+        role="group"
+        aria-label={t('stickers.net')}
+        onKeyDown={onKeyDown}
+      >
         {FACES.map((face) => {
-          const first = FACES.indexOf(face) * STICKERS_PER_FACE;
-          const [row, column] = netCell(first);
+          const first = FACES.indexOf(face) * perFace;
+          const [row, column] = netCell(first, size);
           return (
             <div
               key={face}
               className={styles.face}
-              style={{ gridRow: row / 3 + 1, gridColumn: column / 3 + 1 }}
+              style={{ gridRow: row / size + 1, gridColumn: column / size + 1 }}
               data-active={face === activeFace}
               role="group"
               aria-label={capitalise(t('stickers.faceLabel', { face: t(`face.${face}`) }))}
             >
-              {Array.from({ length: STICKERS_PER_FACE }, (_, i) => {
+              {Array.from({ length: perFace }, (_, i) => {
                 const facelet = first + i;
                 const symbol = stickers.charAt(facelet);
                 const colour = isFace(symbol) ? symbol : undefined;
@@ -138,10 +150,10 @@ export function StickerEditor({
                     aria-current={facelet === cursor ? 'true' : undefined}
                     data-unknown={colour === undefined}
                     data-error={highlighted.has(facelet)}
-                    data-centre={isCentre(facelet)}
+                    data-centre={isFixed(facelet, size)}
                     onClick={() => {
                       setCursor(facelet);
-                      onChange(paint(stickers, facelet, brush));
+                      onChange(paint(stickers, facelet, brush, size));
                     }}
                   />
                 );
@@ -162,14 +174,15 @@ export function StickerEditor({
             aria-label={t('stickers.count', {
               colour: capitalise(colourName(face, t)),
               count: counts[face],
+              total: perFace,
             })}
             onClick={() => {
               setBrush(face);
             }}
           >
             <span className={styles.swatch} style={{ background: FACE_COLOURS[face] }} />
-            <span className={styles.count} data-over={counts[face] > STICKERS_PER_FACE}>
-              {counts[face]}/{STICKERS_PER_FACE}
+            <span className={styles.count} data-over={counts[face] > perFace}>
+              {counts[face]}/{perFace}
             </span>
           </button>
         ))}
@@ -181,10 +194,10 @@ export function StickerEditor({
         <button
           type="button"
           className={ui.button}
-          disabled={stickers === BLANK_STICKERS}
+          disabled={stickers === blank}
           onClick={() => {
-            onChange(BLANK_STICKERS);
-            setCursor(FIRST_FRONT_STICKER);
+            onChange(blank);
+            setCursor(firstFront);
           }}
         >
           {t('stickers.clear')}
@@ -194,7 +207,7 @@ export function StickerEditor({
   );
 }
 
-function StickerStatus({ check }: { readonly check: StickerCheck }) {
+function StickerStatus({ check }: { readonly check: StickerCheck<unknown> }) {
   const { t } = useI18n();
   switch (check.kind) {
     case 'incomplete':
@@ -204,9 +217,9 @@ function StickerStatus({ check }: { readonly check: StickerCheck }) {
     case 'invalid':
       return (
         <ul className={ui.errors} aria-live="polite">
-          {check.errors.map((error, i) => (
-            // Errors have no identity beyond their place in this list, which is rebuilt each time.
-            <li key={i}>{describeCubeError(error, t)}</li>
+          {check.problems.map((problem, i) => (
+            // Problems have no identity beyond their place in this list, which is rebuilt each time.
+            <li key={i}>{problem.describe(t)}</li>
           ))}
         </ul>
       );

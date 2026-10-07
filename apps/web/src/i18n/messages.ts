@@ -13,6 +13,7 @@ const en = {
   'input.title': 'Cube state',
   'input.mode.scramble': 'Scramble',
   'input.mode.stickers': 'Stickers',
+  'input.puzzle': 'Puzzle',
 
   'colour.U': 'white',
   'colour.R': 'red',
@@ -41,17 +42,28 @@ const en = {
     'From the start, tilt the top towards you: {facing} centre facing you, {top} on top.',
   'stickers.hint.D':
     'From the start, tilt the bottom towards you: {facing} centre facing you, {top} on top.',
+  'stickers.hint4.F':
+    'Hold the cube any way round: this face is the front, and this hold is the starting position.',
+  'stickers.hint4.R':
+    'From the start, turn the cube a quarter to the left: the right face is towards you.',
+  'stickers.hint4.B': 'From the start, turn the cube half way round: the back face is towards you.',
+  'stickers.hint4.L':
+    'From the start, turn the cube a quarter to the right: the left face is towards you.',
+  'stickers.hint4.U':
+    'From the start, tilt the top towards you: the top face is towards you, the back face on top.',
+  'stickers.hint4.D':
+    'From the start, tilt the bottom towards you: the bottom face is towards you, the front face on top.',
   'stickers.net': 'Unfolded cube',
   'stickers.faceLabel': '{face} face',
   'stickers.sticker': '{face} face, row {row}, column {column}: {colour}',
   'stickers.palette': 'Colour',
-  'stickers.count': '{colour}: {count} of 9',
+  'stickers.count': '{colour}: {count} of {total}',
   'stickers.keys':
     'Keys W Y G B R O fill in the selected sticker and move on; arrow keys move around.',
   'stickers.clear': 'Clear',
   'stickers.missing': 'Stickers left to fill in: {count}',
   'stickers.valid': 'The state is valid and ready to solve.',
-  'stickers.error.colour-count': '{colour}: {count} stickers instead of 9',
+  'stickers.error.colour-count': '{colour}: {count} stickers instead of {expected}',
   'stickers.error.invalid-corner': 'Corner {position}: no corner has these colours',
   'stickers.error.mirrored-corner':
     'Corner {position}: the colours go in mirror order, so one of its stickers is wrong',
@@ -65,6 +77,14 @@ const en = {
   'stickers.error.parity':
     'Two pieces are swapped. Check the stickers; if they are right, the cube was reassembled wrongly and cannot be solved without taking it apart.',
   'stickers.error.other': 'These stickers do not describe a cube.',
+  'stickers.error4.centre-count': '{colour}: {count} centre stickers instead of 4',
+  'stickers.error4.invalid-corner': 'No corner has the colours of the highlighted one.',
+  'stickers.error4.mirrored-corner':
+    'The highlighted corner shows its colours in mirror order, so one of its stickers is wrong.',
+  'stickers.error4.duplicate-corner': 'The highlighted corners have the same colours.',
+  'stickers.error4.invalid-wing': 'No edge piece has the colours of the highlighted one.',
+  'stickers.error4.duplicate-wing':
+    'The highlighted edge pieces show the same colours the same way round; one of them is wrong.',
 
   'scramble.label': 'Moves in WCA notation (SiGN slices and wide moves also work)',
   'scramble.placeholder': "e.g. R U R' U' F2 D L2",
@@ -126,6 +146,14 @@ const en = {
   'solve.stoppedBy.exhausted': 'No shorter solution exists within the search limits.',
   'solve.noSolution': 'Cancelled before any solution was found.',
   'solve.solved': 'The cube is already solved.',
+  'solve.four.method':
+    'Reduction: centres and edge pairs first, in three searches after Chen Shuang’s TPR solver, then the two-phase 3×3×3 solver. About 45 moves; a solve takes a second or so.',
+  'solve.four.preparing': 'Preparing the 4×4×4 tables: {percent}%',
+  'solve.four.ready': '4×4×4 tables ready: {size} MB in {time}.',
+  'solve.four.failed': 'The 4×4×4 solver failed: {message}',
+  'solve.four.searching': 'Searching…',
+  'solve.four.result': '{moves} found in {time}: {phases}.',
+  'solve.four.phases': 'reduction {a} + {b} + {c}, then 3×3×3 {d}',
 
   'playback.title': 'Solution',
   'playback.start': 'Back to the scramble',
@@ -139,6 +167,8 @@ const en = {
   'playback.keys': 'Space plays and pauses, arrow keys step.',
 
   'guide.hold': 'Hold the cube with the {top} centre on top and the {front} centre facing you.',
+  'guide.hold4':
+    'Hold the cube the way you held it to scramble it or to enter its first face: the picture shows that front towards you.',
   'guide.start': 'Make the moves on your cube one at a time and press Next after each.',
   'guide.step': 'Move {n} of {total}',
   'guide.face.U': 'Top face',
@@ -189,6 +219,7 @@ const ru: Record<MessageKey, string> = {
   'input.title': 'Состояние кубика',
   'input.mode.scramble': 'Скрэмбл',
   'input.mode.stickers': 'Наклейки',
+  'input.puzzle': 'Головоломка',
 
   'colour.U': 'белый',
   'colour.R': 'красный',
@@ -217,17 +248,28 @@ const ru: Record<MessageKey, string> = {
     'Из исходного положения наклоните кубик верхом к себе: {facing} центр к себе, {top} сверху.',
   'stickers.hint.D':
     'Из исходного положения наклоните кубик низом к себе: {facing} центр к себе, {top} сверху.',
+  'stickers.hint4.F':
+    'Возьмите кубик как угодно: эта грань — передняя, а это положение — исходное.',
+  'stickers.hint4.R':
+    'Из исходного положения поверните кубик на четверть влево: к вам правая грань.',
+  'stickers.hint4.B': 'Из исходного положения поверните кубик на пол-оборота: к вам задняя грань.',
+  'stickers.hint4.L':
+    'Из исходного положения поверните кубик на четверть вправо: к вам левая грань.',
+  'stickers.hint4.U':
+    'Из исходного положения наклоните верх к себе: к вам верхняя грань, сверху задняя.',
+  'stickers.hint4.D':
+    'Из исходного положения наклоните низ к себе: к вам нижняя грань, сверху передняя.',
   'stickers.net': 'Развёртка кубика',
   'stickers.faceLabel': '{face} грань',
   'stickers.sticker': '{face} грань, ряд {row}, столбец {column}: {colour}',
   'stickers.palette': 'Цвет',
-  'stickers.count': '{colour}: {count} из 9',
+  'stickers.count': '{colour}: {count} из {total}',
   'stickers.keys':
     'Клавиши Б Ж З С К О заполняют выбранную наклейку и переходят к следующей, стрелки — перемещение.',
   'stickers.clear': 'Очистить',
   'stickers.missing': 'Осталось заполнить наклеек: {count}',
   'stickers.valid': 'Состояние корректно, можно решать.',
-  'stickers.error.colour-count': '{colour}: наклеек {count} вместо 9',
+  'stickers.error.colour-count': '{colour}: наклеек {count} вместо {expected}',
   'stickers.error.invalid-corner': 'Угол {position}: такого сочетания цветов не бывает',
   'stickers.error.mirrored-corner':
     'Угол {position}: цвета идут в зеркальном порядке, одна из наклеек введена неверно',
@@ -241,6 +283,14 @@ const ru: Record<MessageKey, string> = {
   'stickers.error.parity':
     'Две детали поменяны местами. Проверьте наклейки; если они верны, кубик собран неправильно и без разборки не решается.',
   'stickers.error.other': 'Эти наклейки не описывают кубик.',
+  'stickers.error4.centre-count': '{colour}: центральных наклеек {count} вместо 4',
+  'stickers.error4.invalid-corner': 'Угла с цветами выделенного не бывает.',
+  'stickers.error4.mirrored-corner':
+    'Цвета выделенного угла идут в зеркальном порядке, значит, одна из его наклеек неверна.',
+  'stickers.error4.duplicate-corner': 'У выделенных углов одинаковые цвета.',
+  'stickers.error4.invalid-wing': 'Рёберного элемента с цветами выделенного не бывает.',
+  'stickers.error4.duplicate-wing':
+    'Выделенные рёберные элементы показывают одни и те же цвета одинаково; один из них неверен.',
 
   'scramble.label': 'Ходы в нотации WCA (срезы и широкие ходы SiGN тоже подходят)',
   'scramble.placeholder': "например, R U R' U' F2 D L2",
@@ -303,6 +353,14 @@ const ru: Record<MessageKey, string> = {
   'solve.stoppedBy.exhausted': 'Короче в пределах поиска не бывает.',
   'solve.noSolution': 'Отменено до первого найденного решения.',
   'solve.solved': 'Кубик уже собран.',
+  'solve.four.method':
+    'Редукция: сначала центры и пары рёбер — три поиска по образцу солвера TPR Чэнь Шуана, затем двухфазный солвер 3×3×3. Около 45 ходов, решение занимает примерно секунду.',
+  'solve.four.preparing': 'Готовлю таблицы 4×4×4: {percent}%',
+  'solve.four.ready': 'Таблицы 4×4×4 готовы: {size} МБ за {time}.',
+  'solve.four.failed': 'Солвер 4×4×4 не сработал: {message}',
+  'solve.four.searching': 'Ищу решение…',
+  'solve.four.result': '{moves} за {time}: {phases}.',
+  'solve.four.phases': 'редукция {a} + {b} + {c}, затем 3×3×3 {d}',
 
   'playback.title': 'Решение',
   'playback.start': 'К скрэмблу',
@@ -316,6 +374,8 @@ const ru: Record<MessageKey, string> = {
   'playback.keys': 'Пробел — пуск и пауза, стрелки — по ходу.',
 
   'guide.hold': 'Держите кубик: {top} центр сверху, {front} — к себе.',
+  'guide.hold4':
+    'Держите кубик так же, как при скрамбле или вводе первой грани: на картинке эта сторона смотрит на вас.',
   'guide.start': 'Делайте ходы на своём кубике по одному и после каждого нажимайте «Дальше».',
   'guide.step': 'Ход {n} из {total}',
   'guide.face.U': 'Верхняя грань',

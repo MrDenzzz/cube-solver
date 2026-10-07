@@ -19,7 +19,7 @@
 
 .face {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--size, 3), minmax(0, 1fr));
   gap: 2px;
   padding: 2px;
   border-radius: 6px;

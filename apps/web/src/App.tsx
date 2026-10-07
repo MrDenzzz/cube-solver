@@ -1,9 +1,14 @@
 import {
   applyAlgorithm,
+  applyAlgorithm4,
+  cube4ToFacelets,
   SOLVED,
+  SOLVED_4,
   toFacelets,
+  type Cube4,
   type CubieCube,
   type FaceTurn,
+  type LayerTurn,
   type NotationError,
 } from '@cube/core';
 import type { OptimalTier } from '@cube/solver-contracts';
@@ -21,6 +26,7 @@ import styles from './App.module.css';
 import type { TurnAnimation } from './cube3d/CubeModel.tsx';
 import { GuidePanel } from './guide/GuidePanel.tsx';
 import { useI18n } from './i18n/i18n.ts';
+import { FourSolvePanel } from './panels/FourSolvePanel.tsx';
 import { InputPanel, type InputMode } from './panels/InputPanel.tsx';
 import { MovesPanel } from './panels/MovesPanel.tsx';
 import { PlaybackControls } from './panels/PlaybackControls.tsx';
@@ -36,16 +42,25 @@ import {
 import type { Handle } from './solver/client.ts';
 import { toSolveOptions, type SolveSettings } from './solver/settings.ts';
 import {
+  getFourClient,
   getSolverClient,
   setEngineKind,
   useEngineKind,
+  useFourStatus,
   useOptimalStatus,
   useSolverStatus,
   type EngineKind,
 } from './solver/solver.ts';
+import { randomScramble4, useFourSession } from './solver/useFourSession.ts';
 import { randomScramble, useSolveSession } from './solver/useSolveSession.ts';
 import { StickerEditor } from './stickers/StickerEditor.tsx';
-import { BLANK_STICKERS, checkStickers, isStickers } from './stickers/stickers.ts';
+import {
+  blankStickers,
+  checkStickers,
+  checkStickers4,
+  isStickers,
+  type PuzzleSize,
+} from './stickers/stickers.ts';
 import { LanguageSwitch } from './ui/LanguageSwitch.tsx';
 import { readStored, writeStored } from './ui/storage.ts';
 import { useWakeLock } from './ui/useWakeLock.ts';
@@ -55,24 +70,49 @@ const CubeView = lazy(() => import('./cube3d/CubeView.tsx'));
 
 const QUARTER_TURN_MS = 320;
 const REPOSITORY = 'https://github.com/MrDenzzz/cube-solver';
-const STICKERS_KEY = 'cube-solver.stickers';
+const STICKERS_KEYS: Readonly<Record<PuzzleSize, string>> = {
+  3: 'cube-solver.stickers',
+  4: 'cube-solver.stickers4',
+};
+const PUZZLE_KEY = 'cube-solver.puzzle';
 
 const outerTurns = (moves: readonly FaceTurn[]) =>
   moves.map(({ face, turns }) => ({ face, from: 1, to: 1, turns }));
 
-function storedStickers(): string {
-  const stored = readStored(STICKERS_KEY);
-  return stored !== null && isStickers(stored) ? stored : BLANK_STICKERS;
+function storedStickers(size: PuzzleSize): string {
+  const stored = readStored(STICKERS_KEYS[size]);
+  return stored !== null && isStickers(stored, size) ? stored : blankStickers(size);
+}
+
+const storedPuzzle = (): PuzzleSize => (readStored(PUZZLE_KEY) === '4' ? 4 : 3);
+
+/** The state a scramble leads to on either puzzle, as stickers, or the notation errors. */
+function scrambleState(
+  puzzle: PuzzleSize,
+  text: string,
+):
+  | { readonly ok: true; readonly cube3: CubieCube | null; readonly cube4: Cube4 | null }
+  | { readonly ok: false; readonly errors: readonly NotationError[] } {
+  if (puzzle === 3) {
+    const parsed = applyAlgorithm(SOLVED, text);
+    return parsed.ok ? { ok: true, cube3: parsed.value, cube4: null } : parsed;
+  }
+  const parsed = applyAlgorithm4(SOLVED_4, text);
+  return parsed.ok ? { ok: true, cube3: null, cube4: parsed.value } : parsed;
 }
 
 export function App() {
   const { t } = useI18n();
   const status = useSolverStatus();
+  const [puzzle, setPuzzle] = useState<PuzzleSize>(storedPuzzle);
   const [mode, setMode] = useState<InputMode>('scramble');
   const [text, setText] = useState('');
   const [errors, setErrors] = useState<readonly NotationError[]>([]);
   const [scrambled, setScrambled] = useState<CubieCube>(SOLVED);
-  const [stickers, setStickers] = useState(storedStickers);
+  const [scrambled4, setScrambled4] = useState<Cube4>(SOLVED_4);
+  const [stickers, setStickers] = useState(() => storedStickers(3));
+  const [stickers4, setStickers4] = useState(() => storedStickers(4));
+  const fourStatus = useFourStatus();
   const [playback, dispatch] = useReducer(playbackReducer, INITIAL_PLAYBACK);
   const optimalStatus = useOptimalStatus();
   const engine = useEngineKind();
@@ -89,6 +129,7 @@ export function App() {
   const stage = useRef<HTMLElement>(null);
 
   const stickerCheck = useMemo(() => checkStickers(stickers), [stickers]);
+  const stickerCheck4 = useMemo(() => checkStickers4(stickers4), [stickers4]);
   const cube: CubieCube | null =
     mode === 'scramble'
       ? errors.length === 0
@@ -97,54 +138,107 @@ export function App() {
       : stickerCheck.kind === 'valid'
         ? stickerCheck.cube
         : null;
+  const cube4: Cube4 | null =
+    mode === 'scramble'
+      ? errors.length === 0
+        ? scrambled4
+        : null
+      : stickerCheck4.kind === 'valid'
+        ? stickerCheck4.cube
+        : null;
 
-  const onSolved = useCallback((solved: CubieCube, moves: readonly FaceTurn[]) => {
-    dispatch({ type: 'load', size: 3, start: toFacelets(solved), moves: outerTurns(moves) });
-    // Following the solution starts from the reference hold, so the view starts there too.
-    setViewKey((key) => key + 1);
-    stage.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-  }, []);
+  const showSolution = useCallback(
+    (size: PuzzleSize, start: string, moves: readonly LayerTurn[]) => {
+      dispatch({ type: 'load', size, start, moves });
+      // Following the solution starts from the reference hold, so the view starts there too.
+      setViewKey((key) => key + 1);
+      stage.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    },
+    [],
+  );
+  const onSolved = useCallback(
+    (solved: CubieCube, moves: readonly FaceTurn[]) => {
+      showSolution(3, toFacelets(solved), outerTurns(moves));
+    },
+    [showSolution],
+  );
+  const onSolved4 = useCallback(
+    (solved: Cube4, moves: readonly LayerTurn[]) => {
+      showSolution(4, cube4ToFacelets(solved), moves);
+    },
+    [showSolution],
+  );
   const { session, solve, cancel, reset } = useSolveSession(onSolved);
+  const four = useFourSession(onSolved4);
+  const resetFour = four.reset;
 
   /** Shows a new state to solve, dropping the previous solution. */
   const show = useCallback(
-    (facelets: string) => {
+    (facelets: string, size: PuzzleSize) => {
       reset();
-      dispatch({ type: 'load', size: 3, start: facelets, moves: [] });
+      resetFour();
+      dispatch({ type: 'load', size, start: facelets, moves: [] });
     },
-    [reset],
+    [reset, resetFour],
   );
 
   // An invalid scramble keeps the last valid cube on screen while the errors are shown.
-  const changeScramble = useCallback(
-    (value: string) => {
+  const applyScramble = useCallback(
+    (value: string, size: PuzzleSize) => {
       setText(value);
-      const parsed = applyAlgorithm(SOLVED, value);
-      if (!parsed.ok) {
-        setErrors(parsed.errors);
+      const state = scrambleState(size, value);
+      if (!state.ok) {
+        setErrors(state.errors);
         return;
       }
       setErrors([]);
-      setScrambled(parsed.value);
-      show(toFacelets(parsed.value));
+      if (state.cube3 !== null) {
+        setScrambled(state.cube3);
+        show(toFacelets(state.cube3), 3);
+      }
+      if (state.cube4 !== null) {
+        setScrambled4(state.cube4);
+        show(cube4ToFacelets(state.cube4), 4);
+      }
     },
     [show],
+  );
+  const changeScramble = useCallback(
+    (value: string) => {
+      applyScramble(value, puzzle);
+    },
+    [applyScramble, puzzle],
   );
 
   // Half-entered stickers are shown as they are, unknown ones in grey.
   const changeStickers = useCallback(
     (value: string) => {
-      setStickers(value);
-      writeStored(STICKERS_KEY, value);
-      show(value);
+      if (puzzle === 3) setStickers(value);
+      else setStickers4(value);
+      writeStored(STICKERS_KEYS[puzzle], value);
+      show(value, puzzle);
     },
-    [show],
+    [show, puzzle],
   );
 
   const changeMode = (next: InputMode) => {
     setMode(next);
-    if (next === 'scramble') show(toFacelets(scrambled));
-    else show(stickers);
+    if (next === 'stickers') show(puzzle === 3 ? stickers : stickers4, puzzle);
+    else if (puzzle === 3) show(toFacelets(scrambled), 3);
+    else show(cube4ToFacelets(scrambled4), 4);
+  };
+
+  const changePuzzle = (next: PuzzleSize) => {
+    if (next === puzzle) return;
+    setPuzzle(next);
+    writeStored(PUZZLE_KEY, String(next));
+    // The 4×4×4 tables take a second or two: start them as soon as the puzzle is chosen.
+    if (next === 4)
+      getFourClient()
+        .prepareFour()
+        .catch(() => undefined);
+    if (mode === 'stickers') show(next === 3 ? stickers : stickers4, next);
+    else applyScramble(text, next);
   };
 
   const prepare = useCallback((tier: OptimalTier) => {
@@ -177,7 +271,7 @@ export function App() {
 
   const generate = useCallback(() => {
     setGenerating(true);
-    void randomScramble()
+    void (puzzle === 3 ? randomScramble() : randomScramble4())
       .then(changeScramble)
       .catch((error: unknown) => {
         console.error(error);
@@ -185,7 +279,7 @@ export function App() {
       .finally(() => {
         setGenerating(false);
       });
-  }, [changeScramble]);
+  }, [changeScramble, puzzle]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -281,40 +375,64 @@ export function App() {
           />
         </section>
         <div className={styles.panel}>
-          <InputPanel mode={mode} onModeChange={changeMode}>
+          <InputPanel
+            puzzle={puzzle}
+            onPuzzleChange={changePuzzle}
+            mode={mode}
+            onModeChange={changeMode}
+          >
             {mode === 'scramble' ? (
               <ScrambleInput
                 text={text}
                 errors={errors}
                 generating={generating}
-                canGenerate={status.kind === 'ready'}
+                canGenerate={puzzle === 3 ? status.kind === 'ready' : fourStatus.kind !== 'failed'}
                 onChange={changeScramble}
                 onRandom={generate}
               />
             ) : (
-              <StickerEditor stickers={stickers} check={stickerCheck} onChange={changeStickers} />
+              <StickerEditor
+                key={puzzle}
+                size={puzzle}
+                stickers={puzzle === 3 ? stickers : stickers4}
+                check={puzzle === 3 ? stickerCheck : stickerCheck4}
+                onChange={changeStickers}
+              />
             )}
           </InputPanel>
-          <SolvePanel
-            engine={engine}
-            onEngineChange={(next: EngineKind) => {
-              // The old worker goes away with its requests; drop the session first.
-              reset();
-              preparing.current = null;
-              setEngineKind(next);
-            }}
-            status={status}
-            optimalStatus={optimalStatus}
-            session={session}
-            settings={settings}
-            canSolve={cube !== null}
-            onSettingsChange={setSettings}
-            onPrepare={prepare}
-            onSolve={() => {
-              if (cube !== null) solve(cube, toSolveOptions(settings));
-            }}
-            onCancel={cancel}
-          />
+          {puzzle === 4 ? (
+            <FourSolvePanel
+              status={fourStatus}
+              session={four.session}
+              canSolve={cube4 !== null}
+              onSolve={() => {
+                if (cube4 !== null) four.solve(cube4);
+              }}
+              onCancel={four.cancel}
+            />
+          ) : (
+            <SolvePanel
+              engine={engine}
+              onEngineChange={(next: EngineKind) => {
+                // The old worker goes away with its requests; drop the sessions first.
+                reset();
+                resetFour();
+                preparing.current = null;
+                setEngineKind(next);
+              }}
+              status={status}
+              optimalStatus={optimalStatus}
+              session={session}
+              settings={settings}
+              canSolve={cube !== null}
+              onSettingsChange={setSettings}
+              onPrepare={prepare}
+              onSolve={() => {
+                if (cube !== null) solve(cube, toSolveOptions(settings));
+              }}
+              onCancel={cancel}
+            />
+          )}
           {moves.length > 0 && (
             <MovesPanel
               moves={moves}
