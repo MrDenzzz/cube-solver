@@ -19,6 +19,11 @@
     "binaryen": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@cube/solver-ts": "workspace:*"
+  },
+  "dependencies": {
+    "@cube/core": "workspace:*",
+    "@cube/solver-contracts": "workspace:*"
   }
 }

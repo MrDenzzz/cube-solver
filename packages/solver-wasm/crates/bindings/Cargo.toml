@@ -11,6 +11,7 @@ publish.workspace = true
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+cube.workspace = true
 solver.workspace = true
 wasm-bindgen.workspace = true
 
