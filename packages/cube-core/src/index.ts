@@ -25,8 +25,10 @@ export {
 export type { CubeError, CubeErrorCode } from './errors.ts';
 export { parseFacelets, SOLVED_FACELETS, toFacelets } from './facelets.ts';
 export {
+  faceletAt,
   FACES,
   faceNormal,
+  faceWithNormal,
   isFace,
   OPPOSITE,
   solvedFacelets,
