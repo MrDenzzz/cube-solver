@@ -1,0 +1,554 @@
+{
+  "label": "optimal-ts-standard-1t-r2",
+  "date": "2026-10-07T11:46:12.691Z",
+  "machine": {
+    "cpu": "AMD Ryzen 7 9800X3D 8-Core Processor           ",
+    "platform": "win32 10.0.28000",
+    "node": "v24.14.1"
+  },
+  "settings": {
+    "engine": "ts",
+    "tier": "standard",
+    "threads": 1,
+    "positions": "kociemba",
+    "throughDepth": 16,
+    "upperBound": false
+  },
+  "prepareMs": 154,
+  "tableBytes": 35227136,
+  "totals": {
+    "ms": 106423,
+    "nodes": 1935824526,
+    "nodesPerSecond": 18189908
+  },
+  "rows": [
+    {
+      "name": "random 1",
+      "length": null,
+      "optimal": 18,
+      "proven": false,
+      "upperBound": null,
+      "ms": 7168,
+      "nodes": 154631376,
+      "depths": [
+        {
+          "depth": 10,
+          "nodes": 18,
+          "ms": 0.10739999999998417
+        },
+        {
+          "depth": 11,
+          "nodes": 255,
+          "ms": 0.11610000000007403
+        },
+        {
+          "depth": 12,
+          "nodes": 3726,
+          "ms": 0.8928000000000793
+        },
+        {
+          "depth": 13,
+          "nodes": 53664,
+          "ms": 4.773500000000013
+        },
+        {
+          "depth": 14,
+          "nodes": 744777,
+          "ms": 40.87439999999992
+        },
+        {
+          "depth": 15,
+          "nodes": 10338864,
+          "ms": 478.6952
+        },
+        {
+          "depth": 16,
+          "nodes": 143490072,
+          "ms": 6641.1844
+        }
+      ],
+      "published": {
+        "15": 1290873,
+        "16": 17831301,
+        "17": 245464971
+      },
+      "matchesPublished": false
+    },
+    {
+      "name": "random 2",
+      "length": null,
+      "optimal": 18,
+      "proven": false,
+      "upperBound": null,
+      "ms": 11956,
+      "nodes": 224741349,
+      "depths": [
+        {
+          "depth": 10,
+          "nodes": 48,
+          "ms": 0.04369999999926222
+        },
+        {
+          "depth": 11,
+          "nodes": 603,
+          "ms": 0.12470000000030268
+        },
+        {
+          "depth": 12,
+          "nodes": 7305,
+          "ms": 1.3289999999997235
+        },
+        {
+          "depth": 13,
+          "nodes": 92028,
+          "ms": 7.783599999999751
+        },
+        {
+          "depth": 14,
+          "nodes": 1205622,
+          "ms": 66.18399999999929
+        },
+        {
+          "depth": 15,
+          "nodes": 15815742,
+          "ms": 844.3865999999998
+        },
+        {
+          "depth": 16,
+          "nodes": 207620001,
+          "ms": 11034.709699999998
+        }
+      ],
+      "published": {
+        "15": 1928430,
+        "16": 25418349,
+        "17": 334597977
+      },
+      "matchesPublished": false
+    },
+    {
+      "name": "random 3",
+      "length": null,
+      "optimal": 18,
+      "proven": false,
+      "upperBound": null,
+      "ms": 17374,
+      "nodes": 320803137,
+      "depths": [
+        {
+          "depth": 9,
+          "nodes": 18,
+          "ms": 0.007900000000518048
+        },
+        {
+          "depth": 10,
+          "nodes": 102,
+          "ms": 0.013600000002043089
+        },
+        {
+          "depth": 11,
+          "nodes": 1314,
+          "ms": 0.08150000000023283
+        },
+        {
+          "depth": 12,
+          "nodes": 13566,
+          "ms": 0.7260000000023865
+        },
+        {
+          "depth": 13,
+          "nodes": 162462,
+          "ms": 8.440700000002835
+        },
+        {
+          "depth": 14,
+          "nodes": 1975596,
+          "ms": 98.8208999999988
+        },
+        {
+          "depth": 15,
+          "nodes": 24015768,
+          "ms": 1306.0732000000025
+        },
+        {
+          "depth": 16,
+          "nodes": 294634311,
+          "ms": 15959.2491
+        }
+      ],
+      "published": {
+        "15": 3311061,
+        "16": 39782112,
+        "17": 485952603
+      },
+      "matchesPublished": false
+    },
+    {
+      "name": "random 4",
+      "length": null,
+      "optimal": 17,
+      "proven": false,
+      "upperBound": null,
+      "ms": 12305,
+      "nodes": 212349558,
+      "depths": [
+        {
+          "depth": 9,
+          "nodes": 18,
+          "ms": 0.0051000000021304
+        },
+        {
+          "depth": 10,
+          "nodes": 42,
+          "ms": 0.0044999999954598024
+        },
+        {
+          "depth": 11,
+          "nodes": 624,
+          "ms": 0.06000000000494765
+        },
+        {
+          "depth": 12,
+          "nodes": 7221,
+          "ms": 0.7317000000039116
+        },
+        {
+          "depth": 13,
+          "nodes": 90198,
+          "ms": 6.521700000004785
+        },
+        {
+          "depth": 14,
+          "nodes": 1149150,
+          "ms": 71.84709999999905
+        },
+        {
+          "depth": 15,
+          "nodes": 14963679,
+          "ms": 862.5035000000062
+        },
+        {
+          "depth": 16,
+          "nodes": 196138626,
+          "ms": 11362.252500000002
+        }
+      ],
+      "published": {
+        "15": 1853697,
+        "16": 24440712
+      },
+      "matchesPublished": false
+    },
+    {
+      "name": "random 5",
+      "length": null,
+      "optimal": 18,
+      "proven": false,
+      "upperBound": null,
+      "ms": 10074,
+      "nodes": 174448863,
+      "depths": [
+        {
+          "depth": 10,
+          "nodes": 42,
+          "ms": 0.006000000001222361
+        },
+        {
+          "depth": 11,
+          "nodes": 372,
+          "ms": 0.03420000000187429
+        },
+        {
+          "depth": 12,
+          "nodes": 4137,
+          "ms": 0.32590000000345754
+        },
+        {
+          "depth": 13,
+          "nodes": 60336,
+          "ms": 3.8922999999995227
+        },
+        {
+          "depth": 14,
+          "nodes": 848790,
+          "ms": 50.498099999997066
+        },
+        {
+          "depth": 15,
+          "nodes": 11779455,
+          "ms": 670.200499999999
+        },
+        {
+          "depth": 16,
+          "nodes": 161755731,
+          "ms": 9348.1443
+        }
+      ],
+      "published": {
+        "15": 1335570,
+        "16": 18770952,
+        "17": 260113815
+      },
+      "matchesPublished": false
+    },
+    {
+      "name": "random 6",
+      "length": null,
+      "optimal": 18,
+      "proven": false,
+      "upperBound": null,
+      "ms": 9502,
+      "nodes": 172095981,
+      "depths": [
+        {
+          "depth": 10,
+          "nodes": 33,
+          "ms": 0.0034999999988940544
+        },
+        {
+          "depth": 11,
+          "nodes": 357,
+          "ms": 0.027699999998731073
+        },
+        {
+          "depth": 12,
+          "nodes": 4647,
+          "ms": 0.27999999999883585
+        },
+        {
+          "depth": 13,
+          "nodes": 63906,
+          "ms": 3.5925999999963096
+        },
+        {
+          "depth": 14,
+          "nodes": 855978,
+          "ms": 47.691600000005565
+        },
+        {
+          "depth": 15,
+          "nodes": 11689638,
+          "ms": 639.5084999999963
+        },
+        {
+          "depth": 16,
+          "nodes": 159481422,
+          "ms": 8809.797500000008
+        }
+      ],
+      "published": {
+        "15": 1374786,
+        "16": 19053294,
+        "17": 262000026
+      },
+      "matchesPublished": false
+    },
+    {
+      "name": "random 7",
+      "length": null,
+      "optimal": 18,
+      "proven": false,
+      "upperBound": null,
+      "ms": 10015,
+      "nodes": 176997108,
+      "depths": [
+        {
+          "depth": 10,
+          "nodes": 30,
+          "ms": 0.0029999999969732016
+        },
+        {
+          "depth": 11,
+          "nodes": 231,
+          "ms": 0.015499999994062819
+        },
+        {
+          "depth": 12,
+          "nodes": 4170,
+          "ms": 0.24409999999625143
+        },
+        {
+          "depth": 13,
+          "nodes": 61215,
+          "ms": 4.165900000007241
+        },
+        {
+          "depth": 14,
+          "nodes": 869883,
+          "ms": 51.114300000001094
+        },
+        {
+          "depth": 15,
+          "nodes": 11982354,
+          "ms": 676.6269999999931
+        },
+        {
+          "depth": 16,
+          "nodes": 164079225,
+          "ms": 9282.353699999992
+        }
+      ],
+      "published": {
+        "15": 1491219,
+        "16": 20304783,
+        "17": 276363516
+      },
+      "matchesPublished": false
+    },
+    {
+      "name": "random 8",
+      "length": null,
+      "optimal": 18,
+      "proven": false,
+      "upperBound": null,
+      "ms": 7479,
+      "nodes": 131857677,
+      "depths": [
+        {
+          "depth": 10,
+          "nodes": 18,
+          "ms": 0.0022000000026309863
+        },
+        {
+          "depth": 11,
+          "nodes": 171,
+          "ms": 0.016100000008009374
+        },
+        {
+          "depth": 12,
+          "nodes": 2586,
+          "ms": 0.19490000000223517
+        },
+        {
+          "depth": 13,
+          "nodes": 38868,
+          "ms": 2.57839999999851
+        },
+        {
+          "depth": 14,
+          "nodes": 573849,
+          "ms": 31.991699999998673
+        },
+        {
+          "depth": 15,
+          "nodes": 8456634,
+          "ms": 464.5578999999998
+        },
+        {
+          "depth": 16,
+          "nodes": 122785551,
+          "ms": 6978.534400000004
+        }
+      ],
+      "published": {
+        "15": 1050312,
+        "16": 15184191,
+        "17": 217674717
+      },
+      "matchesPublished": false
+    },
+    {
+      "name": "random 9",
+      "length": null,
+      "optimal": 17,
+      "proven": false,
+      "upperBound": null,
+      "ms": 10403,
+      "nodes": 188640126,
+      "depths": [
+        {
+          "depth": 10,
+          "nodes": 18,
+          "ms": 0.003700000001117587
+        },
+        {
+          "depth": 11,
+          "nodes": 339,
+          "ms": 0.02860000000509899
+        },
+        {
+          "depth": 12,
+          "nodes": 5007,
+          "ms": 0.3585000000020955
+        },
+        {
+          "depth": 13,
+          "nodes": 70998,
+          "ms": 4.464399999997113
+        },
+        {
+          "depth": 14,
+          "nodes": 958455,
+          "ms": 59.22599999999511
+        },
+        {
+          "depth": 15,
+          "nodes": 12939717,
+          "ms": 745.9161000000022
+        },
+        {
+          "depth": 16,
+          "nodes": 174665592,
+          "ms": 9591.905800000008
+        }
+      ],
+      "published": {
+        "15": 1561818,
+        "16": 20984124
+      },
+      "matchesPublished": false
+    },
+    {
+      "name": "random 10",
+      "length": null,
+      "optimal": 18,
+      "proven": false,
+      "upperBound": null,
+      "ms": 10147,
+      "nodes": 179259351,
+      "depths": [
+        {
+          "depth": 10,
+          "nodes": 18,
+          "ms": 0.0022000000026309863
+        },
+        {
+          "depth": 11,
+          "nodes": 333,
+          "ms": 0.025200000003678724
+        },
+        {
+          "depth": 12,
+          "nodes": 4581,
+          "ms": 0.27309999999124557
+        },
+        {
+          "depth": 13,
+          "nodes": 65265,
+          "ms": 3.741199999989476
+        },
+        {
+          "depth": 14,
+          "nodes": 901974,
+          "ms": 47.90100000001257
+        },
+        {
+          "depth": 15,
+          "nodes": 12270777,
+          "ms": 724.119399999996
+        },
+        {
+          "depth": 16,
+          "nodes": 166016403,
+          "ms": 9369.704899999997
+        }
+      ],
+      "published": {
+        "15": 1500297,
+        "16": 20394183,
+        "17": 275572329
+      },
+      "matchesPublished": false
+    }
+  ]
+}

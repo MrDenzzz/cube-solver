@@ -105,6 +105,7 @@ async function wasmSolver(): Promise<{
   solve: OptimalSolve;
   prepareMs: number;
   restored: boolean;
+  tableBytes: number;
 }> {
   const wasmFile = new URL(import.meta.resolve('@cube/solver-wasm/solver.wasm'));
   const memory = await initWasm(readFileSync(wasmFile));
@@ -177,7 +178,12 @@ async function wasmSolver(): Promise<{
     outcome.free();
     return result;
   };
-  return { solve, prepareMs, restored: useSaved && engine.restored };
+  return {
+    solve,
+    prepareMs,
+    restored: useSaved && engine.restored,
+    tableBytes: engine.tableFileBytes(),
+  };
 }
 
 let solve: OptimalSolve;
@@ -187,8 +193,7 @@ let parallel: (OptimalSolve & { readonly dispose: () => void }) | undefined;
 let pool: ReturnType<typeof nodeHelperPool> | undefined;
 let restored: boolean;
 if (wasm) {
-  ({ solve, prepareMs, restored } = await wasmSolver());
-  tableBytes = statSync(tablePath).size;
+  ({ solve, prepareMs, restored, tableBytes } = await wasmSolver());
 } else {
   const saved = existsSync(tablePath) ? new Uint8Array(readFileSync(tablePath)) : null;
   const prepareStart = performance.now();
