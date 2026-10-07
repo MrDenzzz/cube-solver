@@ -16,11 +16,13 @@ export type SolveSession =
   | { readonly kind: 'idle' }
   | {
       readonly kind: 'solving';
+      readonly mode: SolveOptions['mode'];
       readonly progress: SolveProgress | null;
       readonly bestLength: number | null;
     }
   | {
       readonly kind: 'done';
+      readonly mode: SolveOptions['mode'];
       readonly result: SolveResult;
       readonly moves: readonly FaceTurn[] | null;
     }
@@ -66,13 +68,13 @@ export function useSolveSession(onSolved: (cube: CubieCube, moves: readonly Face
         },
       });
       current.current = handle;
-      setSession({ kind: 'solving', progress: null, bestLength: null });
+      setSession({ kind: 'solving', mode: options.mode, progress: null, bestLength: null });
       handle.result.then(
         (result) => {
           if (current.current !== handle) return;
           current.current = null;
           const moves = result.moves === null ? null : toFaceTurns(result.moves);
-          setSession({ kind: 'done', result, moves });
+          setSession({ kind: 'done', mode: options.mode, result, moves });
           if (moves !== null) onSolved(cube, moves);
         },
         (error: unknown) => {
@@ -103,8 +105,11 @@ export async function randomScramble(): Promise<string> {
   const [high = 0, low = 0] = crypto.getRandomValues(new Uint32Array(2));
   const rng = Xoshiro128StarStar.fromSeed((BigInt(high) << 32n) | BigInt(low));
   const cube = randomCube(rng);
-  const { moves } = await getSolverClient().solve(cube, { maxLength: 21, timeLimitMs: 1000 })
-    .result;
+  const { moves } = await getSolverClient().solve(cube, {
+    mode: 'fast',
+    maxLength: 21,
+    timeLimitMs: 1000,
+  }).result;
   if (moves === null) throw new Error('The scramble search was cancelled');
   return formatFaceTurns(invertFaceTurns(toFaceTurns(moves)));
 }

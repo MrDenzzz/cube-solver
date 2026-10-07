@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { SolverClient, type SolverStatus } from './client.ts';
+import { SolverClient, type OptimalStatus, type SolverStatus } from './client.ts';
 
 let client: SolverClient | undefined;
 
@@ -14,4 +14,9 @@ export function getSolverClient(): SolverClient {
 export function useSolverStatus(): SolverStatus {
   const solver = getSolverClient();
   return useSyncExternalStore(solver.subscribe, solver.getStatus);
+}
+
+export function useOptimalStatus(): OptimalStatus {
+  const solver = getSolverClient();
+  return useSyncExternalStore(solver.subscribe, solver.getOptimalStatus);
 }

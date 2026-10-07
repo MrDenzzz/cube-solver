@@ -6,7 +6,7 @@ import {
   type FaceTurn,
   type NotationError,
 } from '@cube/core';
-import type { SolveOptions } from '@cube/solver-contracts';
+import type { OptimalTier } from '@cube/solver-contracts';
 import {
   lazy,
   Suspense,
@@ -33,7 +33,9 @@ import {
   playbackReducer,
   visibleTurn,
 } from './playback/playback.ts';
-import { useSolverStatus } from './solver/solver.ts';
+import type { Handle } from './solver/client.ts';
+import { toSolveOptions, type SolveSettings } from './solver/settings.ts';
+import { getSolverClient, useOptimalStatus, useSolverStatus } from './solver/solver.ts';
 import { randomScramble, useSolveSession } from './solver/useSolveSession.ts';
 import { StickerEditor } from './stickers/StickerEditor.tsx';
 import { BLANK_STICKERS, checkStickers, isStickers } from './stickers/stickers.ts';
@@ -65,7 +67,14 @@ export function App() {
   const [scrambled, setScrambled] = useState<CubieCube>(SOLVED);
   const [stickers, setStickers] = useState(storedStickers);
   const [playback, dispatch] = useReducer(playbackReducer, INITIAL_PLAYBACK);
-  const [options, setOptions] = useState<SolveOptions>({ maxLength: 20, timeLimitMs: 2000 });
+  const optimalStatus = useOptimalStatus();
+  const [settings, setSettings] = useState<SolveSettings>({
+    mode: 'fast',
+    maxLength: 20,
+    timeLimitMs: 2000,
+    tier: 'standard',
+  });
+  const preparing = useRef<Handle<unknown> | null>(null);
   const [speed, setSpeed] = useState(1);
   const [generating, setGenerating] = useState(false);
   const [viewKey, setViewKey] = useState(0);
@@ -129,6 +138,27 @@ export function App() {
     if (next === 'scramble') show(toFacelets(scrambled));
     else show(stickers);
   };
+
+  const prepare = useCallback((tier: OptimalTier) => {
+    preparing.current?.cancel();
+    const handle = getSolverClient().prepare(tier);
+    preparing.current = handle;
+    // Failures show up in the optimal status; the promise has nothing more to say.
+    handle.result.catch(() => undefined);
+  }, []);
+
+  // The standard table takes seconds and is then cached, so choosing the mode is enough to start
+  // it; the huge one waits for an explicit request.
+  useEffect(() => {
+    if (
+      settings.mode === 'optimal' &&
+      settings.tier === 'standard' &&
+      status.kind === 'ready' &&
+      optimalStatus.kind === 'none'
+    ) {
+      prepare('standard');
+    }
+  }, [settings.mode, settings.tier, status.kind, optimalStatus.kind, prepare]);
 
   const generate = useCallback(() => {
     setGenerating(true);
@@ -252,12 +282,14 @@ export function App() {
           </InputPanel>
           <SolvePanel
             status={status}
+            optimalStatus={optimalStatus}
             session={session}
-            options={options}
+            settings={settings}
             canSolve={cube !== null}
-            onOptionsChange={setOptions}
+            onSettingsChange={setSettings}
+            onPrepare={prepare}
             onSolve={() => {
-              if (cube !== null) solve(cube, options);
+              if (cube !== null) solve(cube, toSolveOptions(settings));
             }}
             onCancel={cancel}
           />
