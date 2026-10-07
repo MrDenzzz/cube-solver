@@ -56,7 +56,7 @@ const en = {
   'stickers.net': 'Unfolded cube',
   'camera.open': 'Scan with the camera',
   'camera.aim':
-    'Show the faces one at a time, in any order and any way up: fill the grid with a face and hold it still for a moment, and it is taken by itself.',
+    'Show the faces to the camera one at a time, in any order and any way up, and hold each still for a moment: it is found and taken by itself.',
   'camera.starting': 'Starting the camera…',
   'camera.capture': 'Take it now',
   'camera.cancel': 'Cancel',
@@ -64,7 +64,7 @@ const en = {
   'camera.remove': 'Remove this picture',
   'camera.removeFace': 'Remove picture {n}',
   'camera.progress': 'Faces taken: {count} of 6',
-  'camera.status.search': 'Bring a face into the grid.',
+  'camera.status.search': 'Show a face of the cube to the camera.',
   'camera.status.steady': 'Hold still…',
   'camera.status.again': 'This face is taken already: show another one.',
   'camera.unplaceable':
@@ -336,7 +336,7 @@ const ru: Record<MessageKey, string> = {
   'stickers.net': 'Развёртка кубика',
   'camera.open': 'Сканировать камерой',
   'camera.aim':
-    'Показывайте грани по одной, в любом порядке и любой стороной вверх: заполните сетку гранью и задержите её на мгновение — снимок сделается сам.',
+    'Показывайте грани камере по одной, в любом порядке и любой стороной вверх, и задерживайте каждую на мгновение: она найдётся и снимется сама.',
   'camera.starting': 'Включаю камеру…',
   'camera.capture': 'Снять сейчас',
   'camera.cancel': 'Отмена',
@@ -344,7 +344,7 @@ const ru: Record<MessageKey, string> = {
   'camera.remove': 'Убрать этот снимок',
   'camera.removeFace': 'Убрать снимок {n}',
   'camera.progress': 'Снято граней: {count} из 6',
-  'camera.status.search': 'Поднесите грань к сетке.',
+  'camera.status.search': 'Покажите камере грань кубика.',
   'camera.status.steady': 'Держите неподвижно…',
   'camera.status.again': 'Эта грань уже снята — покажите другую.',
   'camera.unplaceable':

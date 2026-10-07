@@ -1,16 +1,13 @@
 import { rotateGrid } from './placement.ts';
-import type { CellColour, GridReading } from './sample.ts';
+import type { CellColour } from './sample.ts';
 
-// When to take a picture without a button: a cube face fills the grid (every cell one colour,
-// dark gaps between the cells) and holds still for a moment. A face already taken, seen again in
-// any rotation, is not taken twice.
+// When to take a picture without a button: a face is found in the picture (see detect.ts) and
+// holds still for a moment. A face already taken, seen again in any rotation, is not taken twice.
 
 /** Readings in a row that must agree before a picture is taken: about 0.4 s at 8 a second. */
 export const STEADY_READINGS = 3;
-const MAX_SPREAD = 45;
-const MIN_DARK_BORDERS = 0.6;
 /** Mean colour difference (CIE76) between readings of a still face; the camera's noise stays well below. */
-const STILL = 6;
+const STILL = 8;
 /** Mean difference below which a face matches one already taken. */
 const SAME_FACE = 12;
 
@@ -22,11 +19,6 @@ const difference = (a: readonly CellColour[], b: readonly CellColour[]) => {
   });
   return sum / Math.max(1, a.length);
 };
-
-export function looksLikeFace(reading: GridReading): boolean {
-  const mixed = reading.cells.filter((cell) => cell.spread > MAX_SPREAD).length;
-  return mixed <= 1 && reading.darkBorders >= MIN_DARK_BORDERS;
-}
 
 /** Index of a taken face that these cells show again, in any rotation, or -1. */
 export function matchingFace(
@@ -48,19 +40,26 @@ export const IDLE: Watch = { previous: null, steady: 0 };
 
 export type Verdict = 'none' | 'steadying' | 'take' | 'taken-already';
 
-/** One reading of the camera: whether to take the face now. */
+/**
+ * One reading of the camera, `cells` being the face found in it, if any: whether to take it now.
+ * A face found turned by a quarter from the last reading reads differently, so it is matched in
+ * every rotation.
+ */
 export function watch(
   state: Watch,
-  reading: GridReading,
+  cells: readonly CellColour[] | null,
   taken: readonly (readonly CellColour[])[],
   size: number,
 ): { readonly state: Watch; readonly verdict: Verdict } {
-  if (!looksLikeFace(reading)) return { state: IDLE, verdict: 'none' };
-  const still = state.previous !== null && difference(state.previous, reading.cells) < STILL;
+  if (cells === null) return { state: IDLE, verdict: 'none' };
+  const previous = state.previous;
+  const still =
+    previous !== null &&
+    [0, 1, 2, 3].some((t) => difference(rotateGrid(previous, size, t), cells) < STILL);
   const steady = still ? state.steady + 1 : 1;
-  const next = { previous: reading.cells, steady };
+  const next = { previous: cells, steady };
   if (steady < STEADY_READINGS) return { state: next, verdict: 'steadying' };
-  if (matchingFace(reading.cells, taken, size) !== -1) {
+  if (matchingFace(cells, taken, size) !== -1) {
     return { state: next, verdict: 'taken-already' };
   }
   // Start over, so the same face is not taken again on the next reading.

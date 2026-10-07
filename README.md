@@ -91,7 +91,7 @@ Each choice with alternatives and measurements is an [architecture decision reco
 6. [Rust to WebAssembly toolchain](docs/adr/0006-rust-to-webassembly-toolchain.md)
 7. [TypeScript vs WebAssembly, and threads](docs/adr/0007-typescript-vs-webassembly.md)
 8. [4×4×4: three-phase reduction with an exact edge-pairing table](docs/adr/0008-four-by-four-reduction.md)
-9. [Camera input: faces in any order, CIEDE2000, balanced groups and a placement search](docs/adr/0009-camera-input.md)
+9. [Camera input: faces found anywhere, in any order, named by balanced groups and placed by a search](docs/adr/0009-camera-input.md)
 10. [Hosting: nginx on our own server, for cross-origin isolation](docs/adr/0010-hosting.md)
 
 Research done before the first line of code, with sources: [docs/research.md](docs/research.md).

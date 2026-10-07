@@ -1,4 +1,4 @@
-# 0009. Camera input: faces in any order, CIEDE2000, balanced groups and a placement search
+# 0009. Camera input: faces found anywhere, in any order, named by balanced groups and placed by a search
 
 - **Status:** Accepted
 - **Date:** 2026-10-07
@@ -18,9 +18,20 @@
 
 ## Decision
 
-- **Reading the picture.** A grid over the centred square of 70 % of the frame's shorter side,
-  read 8 times a second at 240 px. Each cell's middle 40 % is reduced to the per-channel median,
-  which ignores glare spots. The preview is not mirrored, so a picture's left is the face's left.
+- **Finding the face.** No grid to line up with: the whole frame, scaled to 400 px on its longer
+  side, is split into patches along barriers, which are dark colourless plastic (cubes with
+  stickers) and colour changes of more than 30 per channel across 2 px (stickerless cubes, whose
+  seams between pieces are not dark). Patches shaped like a filled rectangle or disc and roughly
+  square are stickers; a run of k pieces of one colour whose seams were too faint, k times as
+  long as wide and k times a sticker's area, is cut into k. A size × size lattice is then looked
+  for among them, seeded by every patch and each of its near neighbours, with one sticker
+  allowed missing; a lattice with stickers beyond its sides is part of a larger face and refused,
+  so a 4×4×4 is not read as a 3×3×3. The lattice is fitted by least squares, which takes in a
+  slight perspective, and each sticker's middle is read as the per-channel median, which ignores
+  glare. The face is read as it appears on screen, rows left to right; the preview is not
+  mirrored. On a photo of the author's two stickerless cubes this found all 16 and all 9 pieces
+  in 16 and 34 ms, colours in the right places; a fixed grid, the first design, never took a
+  face by itself on that camera, since a face held by hand never lined up with it.
 - **Choosing the camera.** On a phone or tablet (a coarse pointer) the rear camera is asked for;
   on a computer, the browser's own choice, and a camera picked from the list is remembered. No
   size is asked for: the camera's own is plenty for a grid read at 240 px. On a desktop with seven
@@ -31,12 +42,11 @@
   default size, worked throughout. If a picked camera is gone or the first choice will not
   start, the browser's default is asked. A camera that still fails, stops, or sends no picture
   within 4 s or only black for 3 s gets an explanation, a button to try again and the list.
-- **Taking a face by itself.** A face is taken when every cell but one is one colour (the 10th
-  to 90th percentile spread of each channel stays under 45), at least 60 % of the borders between
-  cells have a dark line across them (the gaps between pieces; a wall or a face half out of the
-  grid has none), and three readings in a row agree, about 0.4 s. A face matching one already
-  taken, in any rotation, is not taken again. A button takes one at once, and a tap on a
-  thumbnail removes it.
+- **Taking a face by itself.** A face is taken when it is found in three readings in a row
+  (8 a second) whose colours agree, in any rotation, about 0.4 s of holding still. A face matching
+  one already taken, in any rotation, is not taken again. While searching, the found face is
+  outlined and each sticker marked in the colour it will most likely be named, from everything
+  seen so far. A button takes the found face at once, and a tap on a thumbnail removes it.
 - **Colour difference.** Samples are compared in CIELAB (D65) with CIEDE2000, which weighs hue
   differences among saturated colours more than plain Lab distance does. The implementation
   reproduces all 34 test pairs of Sharma, Wu and Dalal to four decimals [sharma].
@@ -76,6 +86,11 @@
   122,880 arrangements are looked at. (Measured with a prototype of `placement.ts` in Node on the
   machine of ADR 0007; `placement.test.ts` keeps the cases.)
 
+- Finding the face (`detect.test.ts`): rendered 3×3×3 and 4×4×4 faces upright, turned by 20° and
+  40°, small and off to one side, and filling most of the picture, among coloured clutter, and
+  stickerless faces whose same-coloured neighbours are split only by a slightly darker seam, are
+  all read sticker for sticker; a room without a cube and a face mostly out of the picture give
+  nothing, and a 4×4×4 face gives no 3×3×3.
 - Synthetic stickers with a warm cast and ±12 noise per channel, made-up values rather than
   measurements, are named exactly on a scrambled 3×3×3 and 4×4×4 for 20 noise seeds each; random
   noise still yields N² stickers of each colour.

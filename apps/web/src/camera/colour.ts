@@ -186,7 +186,14 @@ export function classifyFaces(
     group = balancedGroups(samples, references, perFace, pinned);
     references = references.map((_, g) => mean(samples.filter((_, i) => group[i] === g)));
   }
-  let names: readonly number[] = FACES.map((_, g) => g);
+  const names = nameGroups(references, palette);
+  const letters = samples.map((_, i) => FACES[names[group[i] ?? 0] ?? 0] ?? 'U').join('');
+  return faces.map((_, f) => letters.slice(f * perFace, (f + 1) * perFace));
+}
+
+/** Which colour each group's reference is: the assignment to the palette with the least total difference. */
+function nameGroups(references: readonly Lab[], palette: Readonly<Record<Face, Lab>>): number[] {
+  let names: number[] = FACES.map((_, g) => g);
   let best = Number.POSITIVE_INFINITY;
   for (const p of SIX_PERMUTATIONS) {
     const total = p.reduce(
@@ -198,6 +205,51 @@ export function classifyFaces(
       names = p;
     }
   }
-  const letters = samples.map((_, i) => FACES[names[group[i] ?? 0] ?? 0] ?? 'U').join('');
-  return faces.map((_, f) => letters.slice(f * perFace, (f + 1) * perFace));
+  return names;
+}
+
+const nearest = (sample: Lab, references: readonly Lab[]) => {
+  let best = 0;
+  references.forEach((r, g) => {
+    if (ciede2000(sample, r) < ciede2000(sample, references[best] ?? r)) best = g;
+  });
+  return best;
+};
+
+/**
+ * Six references for showing stickers before all six faces are in: from the palette, each moved
+ * to the mean of the samples nearest to it a few times, and named like the final groups. It
+ * keeps the light's colour cast out of what is shown, so a red that the camera sees as brown is
+ * shown red.
+ */
+export function provisionalReferences(
+  samples: readonly Lab[],
+  palette: Readonly<Record<Face, Lab>>,
+): Readonly<Record<Face, Lab>> {
+  let references: Lab[] = FACES.map((face) => palette[face]);
+  for (let round = 0; round < 4; round++) {
+    const groups: Lab[][] = references.map(() => []);
+    for (const sample of samples) groups[nearest(sample, references)]?.push(sample);
+    references = references.map((r, g) => {
+      const members = groups[g] ?? [];
+      return members.length > 0 ? mean(members) : r;
+    });
+  }
+  const names = nameGroups(references, palette);
+  const named = {} as Record<Face, Lab>;
+  references.forEach((r, g) => (named[FACES[names[g] ?? 0] ?? 'U'] = r));
+  return named;
+}
+
+/** The colour whose reference is closest to a sample. */
+export function nearestFace(sample: Lab, references: Readonly<Record<Face, Lab>>): Face {
+  const faces = FACES;
+  return (
+    faces[
+      nearest(
+        sample,
+        faces.map((f) => references[f]),
+      )
+    ] ?? 'U'
+  );
 }

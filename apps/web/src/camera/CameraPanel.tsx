@@ -6,9 +6,10 @@ import { readStored, writeStored } from '../ui/storage.ts';
 import ui from '../ui/ui.module.css';
 import styles from './CameraPanel.module.css';
 import { IDLE, matchingFace, watch, type Verdict, type Watch } from './capture.ts';
-import { classifyFaces, paletteLab } from './colour.ts';
+import { classifyFaces, nearestFace, paletteLab, provisionalReferences } from './colour.ts';
+import { detectFace, type Detection } from './detect.ts';
 import { placeFaces } from './placement.ts';
-import { gridSquare, readGrid, type CellColour, type GridReading } from './sample.ts';
+import type { CellColour } from './sample.ts';
 
 type CameraState =
   | { readonly kind: 'starting' }
@@ -20,9 +21,17 @@ type CameraState =
       readonly message: string;
     };
 
-/** How often the picture is read, and the size it is read at: plenty for 16 stickers. */
+/** How often the picture is read, and its longer side when read: plenty for 16 stickers. */
 const READ_EVERY_MS = 125;
-const READ_SIDE = 240;
+const READ_LONG = 400;
+
+/** One reading of the camera: the face found in it, if any, in the read picture's pixels. */
+interface Reading {
+  readonly detection: Detection | null;
+  readonly width: number;
+  readonly height: number;
+  readonly black: boolean;
+}
 
 /** How long a camera may take to send its first picture. */
 const FIRST_PICTURE_MS = 4000;
@@ -125,7 +134,7 @@ export function CameraPanel({
   const canvas = useRef<HTMLCanvasElement | null>(null);
   const [camera, setCamera] = useState<CameraState>({ kind: 'starting' });
   const [taken, setTaken] = useState<readonly (readonly CellColour[])[]>([]);
-  const [live, setLive] = useState<GridReading | null>(null);
+  const [live, setLive] = useState<Reading | null>(null);
   const [verdict, setVerdict] = useState<Verdict>('none');
   const [unplaceable, setUnplaceable] = useState(false);
   // A new attempt restarts the camera, with the device picked if there is a choice.
@@ -207,18 +216,24 @@ export function CameraPanel({
     };
   }, [attempt]);
 
-  /** The grid's square of the current frame, scaled down and read. */
-  const read = useCallback((): GridReading | null => {
+  /** The current frame, scaled down, searched for a face. */
+  const read = useCallback((): Reading | null => {
     const element = video.current;
-    if (element === null || element.videoWidth === 0) return null;
+    if (element === null || !hasPicture(element)) return null;
+    const scale = Math.min(1, READ_LONG / Math.max(element.videoWidth, element.videoHeight));
+    const width = Math.round(element.videoWidth * scale);
+    const height = Math.round(element.videoHeight * scale);
     canvas.current ??= document.createElement('canvas');
-    canvas.current.width = READ_SIDE;
-    canvas.current.height = READ_SIDE;
+    canvas.current.width = width;
+    canvas.current.height = height;
     const context = canvas.current.getContext('2d', { willReadFrequently: true });
     if (context === null) return null;
-    const { x, y, side } = gridSquare(element.videoWidth, element.videoHeight);
-    context.drawImage(element, x, y, side, side, 0, 0, READ_SIDE, READ_SIDE);
-    return readGrid(context.getImageData(0, 0, READ_SIDE, READ_SIDE), size);
+    context.drawImage(element, 0, 0, width, height);
+    const pixels = context.getImageData(0, 0, width, height);
+    let light = 0;
+    for (let i = 0; i < pixels.data.length; i += 64) light += pixels.data[i] ?? 0;
+    const black = light / (pixels.data.length / 64) < 8;
+    return { detection: detectFace(pixels, size), width, height, black };
   }, [size]);
 
   const finish = useCallback(
@@ -255,13 +270,13 @@ export function CameraPanel({
       if (reading === null) return;
       setLive(reading);
       // A picture that stays black: a camera that runs but shows nothing, like an idle virtual one.
-      const black = reading.cells.every((cell) => cell.lab[0] < 4);
-      darkReadings.current = black ? darkReadings.current + 1 : 0;
+      darkReadings.current = reading.black ? darkReadings.current + 1 : 0;
       setDark(darkReadings.current >= DARK_READINGS);
-      const next = watch(watching.current, reading, takenNow.current, size);
+      const cells = reading.detection?.cells ?? null;
+      const next = watch(watching.current, cells, takenNow.current, size);
       watching.current = next.state;
       setVerdict(next.verdict);
-      if (next.verdict === 'take') take(reading.cells);
+      if (next.verdict === 'take' && cells !== null) take(cells);
     }, READ_EVERY_MS);
     return () => {
       clearInterval(timer);
@@ -275,8 +290,24 @@ export function CameraPanel({
     setUnplaceable(false);
   };
 
-  const square =
-    camera.kind === 'live' ? gridSquare(camera.width, camera.height) : { x: 0, y: 0, side: 0 };
+  // Stickers are shown as one of the six colours, named from everything seen so far.
+  const references = useMemo(
+    () =>
+      provisionalReferences(
+        [...taken.flat(), ...(live?.detection?.cells ?? [])].map((c) => c.lab),
+        palette,
+      ),
+    [taken, live, palette],
+  );
+  const shown = (cell: CellColour) => FACE_COLOURS[nearestFace(cell.lab, references)];
+  const found = live?.detection ?? null;
+  const step =
+    found === null
+      ? 0
+      : Math.hypot(
+          (found.centres[1]?.[0] ?? 0) - (found.centres[0]?.[0] ?? 0),
+          (found.centres[1]?.[1] ?? 0) - (found.centres[0]?.[1] ?? 0),
+        );
   const status = unplaceable
     ? t('camera.unplaceable')
     : verdict === 'taken-already'
@@ -297,27 +328,32 @@ export function CameraPanel({
         }
       >
         <video ref={video} className={styles.video} playsInline muted />
-        {camera.kind === 'live' && (
-          <div
-            className={styles.grid}
+        {camera.kind === 'live' && live !== null && found !== null && (
+          <svg
+            className={styles.marks}
+            viewBox={`0 0 ${String(live.width)} ${String(live.height)}`}
+            preserveAspectRatio="none"
             data-verdict={verdict}
-            style={{
-              left: `${String((square.x / camera.width) * 100)}%`,
-              top: `${String((square.y / camera.height) * 100)}%`,
-              width: `${String((square.side / camera.width) * 100)}%`,
-              height: `${String((square.side / camera.height) * 100)}%`,
-              gridTemplateColumns: `repeat(${String(size)}, 1fr)`,
-            }}
             aria-hidden="true"
           >
-            {Array.from({ length: size * size }, (_, i) => (
-              <span key={i} className={styles.cell}>
-                {verdict !== 'none' && (
-                  <span className={styles.dot} style={{ background: live?.cells[i]?.css }} />
-                )}
-              </span>
-            ))}
-          </div>
+            <polygon
+              className={styles.outline}
+              points={found.outline.map(([x, y]) => `${String(x)},${String(y)}`).join(' ')}
+            />
+            {found.centres.map(([x, y], i) => {
+              const cell = found.cells[i];
+              return (
+                <circle
+                  key={i}
+                  className={styles.dot}
+                  cx={x}
+                  cy={y}
+                  r={step * 0.16}
+                  fill={cell === undefined ? 'none' : shown(cell)}
+                />
+              );
+            })}
+          </svg>
         )}
         {camera.kind === 'starting' && <p className={styles.overlay}>{t('camera.starting')}</p>}
       </div>
@@ -393,7 +429,7 @@ export function CameraPanel({
                 style={{ gridTemplateColumns: `repeat(${String(size)}, 1fr)` }}
               >
                 {cells.map((cell, k) => (
-                  <span key={k} style={{ background: cell.css }} />
+                  <span key={k} style={{ background: shown(cell) }} />
                 ))}
               </span>
             </button>
@@ -407,8 +443,8 @@ export function CameraPanel({
           className={ui.button}
           disabled={camera.kind !== 'live' || taken.length >= 6}
           onClick={() => {
-            const reading = read();
-            if (reading !== null) take(reading.cells);
+            const cells = read()?.detection?.cells;
+            if (cells !== undefined) take(cells);
           }}
         >
           {t('camera.capture')}

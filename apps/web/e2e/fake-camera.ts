@@ -1,7 +1,6 @@
 import { closeSync, mkdirSync, openSync, writeSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { rotateFace } from '../src/camera/placement.ts';
-import { gridSquare } from '../src/camera/sample.ts';
 import { drawFace } from '../src/camera/synthetic.ts';
 
 // Videos for Chrome's fake camera (--use-file-for-fake-video-capture): a cube's faces brought
@@ -70,7 +69,9 @@ export function writeCubeVideo(
     file,
     `YUV4MPEG2 W${String(WIDTH)} H${String(HEIGHT)} F${String(FPS)}:1 Ip A1:1 C420jpeg\n`,
   );
-  const square = gridSquare(WIDTH, HEIGHT);
+  // Centred, 70 % of the shorter side: where a person would hold the face.
+  const side = Math.round(Math.min(WIDTH, HEIGHT) * 0.7);
+  const square = { x: Math.round((WIDTH - side) / 2), y: Math.round((HEIGHT - side) / 2), side };
   let seed = 1;
   // A little sensor noise, the same in every run.
   const noise = () => {
