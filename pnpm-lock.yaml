@@ -442,6 +442,10 @@ importers:
         version: 5.0.3(@types/node@24.19.1)(vite@8.3.2(@types/node@24.19.1)(jiti@2.6.1))
 
   tools/tablegen:
+    dependencies:
+      '@cube/solver-ts':
+        specifier: workspace:*
+        version: link:../../packages/solver-ts
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
