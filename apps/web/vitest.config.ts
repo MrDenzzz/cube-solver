@@ -4,6 +4,8 @@ import { defineConfig } from 'vitest/config';
 // every imported constant into a getter call and slow the solvers' table building several times.
 export default defineConfig({
   test: {
+    // e2e/ holds Playwright's tests, run against a build by `pnpm e2e`.
+    include: ['src/**/*.test.ts'],
     experimental: { viteModuleRunner: false },
   },
 });

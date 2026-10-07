@@ -1,6 +1,9 @@
 node_modules/
 dist/
 coverage/
+# Playwright output
+test-results/
+playwright-report/
 .turbo/
 *.tsbuildinfo
 *.log
