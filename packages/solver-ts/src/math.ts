@@ -1,4 +1,5 @@
-const MAX_N = 12;
+// Up to the 24 centre or wing slots of the 4×4×4.
+const MAX_N = 24;
 
 const BINOMIAL: readonly (readonly number[])[] = Array.from({ length: MAX_N + 1 }, (_, n) =>
   Array.from({ length: MAX_N + 1 }, (__, k) => {

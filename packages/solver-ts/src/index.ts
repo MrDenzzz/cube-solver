@@ -37,3 +37,11 @@ export {
   type HelperPool,
 } from './parallel.ts';
 export type { SearchTables } from './optimal.ts';
+export {
+  createReductionSolver,
+  type ReductionOptions,
+  type ReductionResult,
+  type ReductionSolve,
+} from './four/reduction.ts';
+export { buildReductionTables, type ReductionTables } from './four/tables.ts';
+export { buildEdgePairing, type EdgePairingTable } from './four/edge-pairing.ts';
