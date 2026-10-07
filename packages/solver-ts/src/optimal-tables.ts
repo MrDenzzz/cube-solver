@@ -22,6 +22,8 @@ export interface OptimalTables {
   readonly prune: Uint32Array;
   /** The prune table with its file header in front, ready to be cached as is. */
   readonly file: Uint8Array;
+  /** Whether the prune table came from a saved file rather than a build. */
+  readonly restored: boolean;
   /** Exact distance to solved corner positions (permutation only), a cheap extra bound. */
   readonly cornerDepth: Uint8Array;
   readonly twistMove: Uint16Array;
@@ -197,24 +199,34 @@ function fillPruneTable(
 
 /**
  * Builds the optimal solver's tables, or restores the prune table from a file saved earlier,
- * which skips the expensive part. Returns null when stopped through `hooks.shouldStop`.
+ * which skips the expensive part. Returns null when stopped through `hooks.shouldStop`. With
+ * `shared`, the large tables live in SharedArrayBuffers so that helper threads can search them; a
+ * saved file outside shared memory is then copied in.
  */
 export function buildOptimalTables(
   tier: OptimalTier,
   moves: MoveTables,
   saved: Uint8Array | null = null,
   hooks: OptimalBuildHooks = {},
+  shared = false,
 ): OptimalTables | null {
-  const classes = buildFlipSliceClasses(tier === 'huge');
+  const classes = buildFlipSliceClasses(tier === 'huge', shared);
   const twistConj = buildTwistConjugation();
-  const restored = saved === null ? null : readPruneFile(saved, tier, classes.count);
+  const usable =
+    saved === null || !shared || saved.buffer instanceof SharedArrayBuffer
+      ? saved
+      : copyToShared(saved);
+  const restored = usable === null ? null : readPruneFile(usable, tier, classes.count);
   let prune: Uint32Array;
   let file: Uint8Array;
-  if (restored !== null && saved !== null) {
+  if (restored !== null && usable !== null) {
     prune = restored;
-    file = saved;
+    file = usable;
   } else {
-    const words = new Uint32Array(HEADER_WORDS + Math.ceil(pruneEntries(classes.count) / 16));
+    const length = HEADER_WORDS + Math.ceil(pruneEntries(classes.count) / 16);
+    const words = shared
+      ? new Uint32Array(new SharedArrayBuffer(length * 4))
+      : new Uint32Array(length);
     prune = words.subarray(HEADER_WORDS);
     if (!fillPruneTable(prune, classes, twistConj, moves, hooks)) return null;
     writeHeader(words, tier, classes.count);
@@ -226,6 +238,7 @@ export function buildOptimalTables(
     twistConj,
     prune,
     file,
+    restored: restored !== null,
     cornerDepth: buildCornerDepth(moves.cornerPermMove),
     twistMove: moves.twistMove,
     flipMove: moves.flipMove,
@@ -233,6 +246,12 @@ export function buildOptimalTables(
     sliceSortedMove: moves.sliceSortedMove,
     cornerPermMove: moves.cornerPermMove,
   };
+}
+
+function copyToShared(bytes: Uint8Array): Uint8Array {
+  const copy = new Uint8Array(new SharedArrayBuffer(bytes.byteLength));
+  copy.set(bytes);
+  return copy;
 }
 
 /** Slice positions (0..494) of each sliceSorted value. */

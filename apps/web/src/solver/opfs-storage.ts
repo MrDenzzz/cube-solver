@@ -2,12 +2,13 @@ import type { TableStorage } from './worker-host.ts';
 
 /**
  * Tables in the Origin Private File System, through synchronous access handles: they exist only
- * in dedicated workers, read straight into one buffer the tables then use without a copy, and
- * have no size limit per value as IndexedDB implementations do. A file left half-written by a
+ * in dedicated workers, read straight into the buffer the engine then uses without a copy (shared
+ * memory, or WebAssembly memory), and have no size limit per value as IndexedDB implementations
+ * do. A file left half-written by a
  * closed tab fails the header check and is rebuilt. See docs/adr/0004.
  */
 export const opfsStorage: TableStorage = {
-  async read(name) {
+  async read(name, allocate) {
     const root = await navigator.storage.getDirectory();
     let file: FileSystemFileHandle;
     try {
@@ -18,7 +19,7 @@ export const opfsStorage: TableStorage = {
     }
     const access = await file.createSyncAccessHandle();
     try {
-      const bytes = new Uint8Array(access.getSize());
+      const bytes = allocate(access.getSize());
       access.read(bytes, { at: 0 });
       return bytes;
     } finally {

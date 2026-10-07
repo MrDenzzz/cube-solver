@@ -75,6 +75,11 @@ export interface PreparedTables {
 /** What a worker needs from an engine. All calls are synchronous: they run inside the worker. */
 export interface SolverEngine {
   readonly name: string;
+  /**
+   * A buffer to read a saved table file into, placed where the engine uses it without a copy:
+   * shared memory for threads, or a WebAssembly engine's own memory.
+   */
+  allocateTableFile(size: number): Uint8Array;
   /** Builds the fast mode's tables, reporting steps done out of total. */
   init(onProgress: (done: number, total: number) => void): { readonly tableBytes: number };
   /**

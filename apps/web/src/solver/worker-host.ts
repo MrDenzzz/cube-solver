@@ -10,7 +10,8 @@ const PROGRESS_INTERVAL_MS = 100;
 
 /** Where built tables are kept between visits. Failures only cost a rebuild. */
 export interface TableStorage {
-  read(name: string): Promise<Uint8Array | null>;
+  /** Reads a file into a buffer from `allocate`, or returns null if there is none. */
+  read(name: string, allocate: (size: number) => Uint8Array): Promise<Uint8Array | null>;
   write(name: string, bytes: Uint8Array): Promise<void>;
 }
 
@@ -53,7 +54,7 @@ export function startWorkerHost(
     const name = `optimal-${tier}.bin`;
     let saved: Uint8Array | null = null;
     try {
-      saved = (await storage?.read(name)) ?? null;
+      saved = (await storage?.read(name, (size) => engine.allocateTableFile(size))) ?? null;
     } catch {
       // Unreadable storage is the same as an empty one.
     }

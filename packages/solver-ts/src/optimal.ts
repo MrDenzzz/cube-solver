@@ -17,6 +17,7 @@ import {
   N_TWIST,
 } from './coordinates.ts';
 import { SLICE_OF_SORTED, type OptimalTables } from './optimal-tables.ts';
+import type { FlipSliceClasses } from './sym-coordinates.ts';
 import { N_SYM } from './symmetry.ts';
 import { N_MOVES } from './tables.ts';
 
@@ -84,13 +85,13 @@ const moveOnAxis = Uint8Array.from({ length: AXES.length * N_MOVES }, (_, i) => 
   return faceTurnIndex({ face: seen, turns });
 });
 
-const MAX_DEPTH = 24;
+export const MAX_DEPTH = 24;
 
 // Search outcomes, as numbers to keep the recursion cheap.
-const FOUND = 1;
-const NONE = 0;
-const STOPPED = -1;
-type Outcome = typeof FOUND | typeof NONE | typeof STOPPED;
+export const FOUND = 1;
+export const NONE = 0;
+export const STOPPED = -1;
+export type Outcome = typeof FOUND | typeof NONE | typeof STOPPED;
 const CHECK_INTERVAL = 1 << 20;
 
 // Per depth: twist, flip, sliceSorted and exact distance for each axis, then the corner permutation.
@@ -108,7 +109,19 @@ const NEXT_DISTANCE = Int8Array.from({ length: (MAX_DEPTH + 2) * 3 }, (_, i) => 
   return before + (step === 2 ? -1 : step === -2 ? 1 : step);
 });
 
-function lookups(tables: OptimalTables) {
+/** The parts of the tables a search reads; helpers get exactly these. */
+export type SearchTables = Pick<
+  OptimalTables,
+  | 'twistConj'
+  | 'prune'
+  | 'cornerDepth'
+  | 'twistMove'
+  | 'flipMove'
+  | 'sliceSortedMove'
+  | 'cornerPermMove'
+> & { readonly classes: Pick<FlipSliceClasses, 'classOf' | 'sorted'> };
+
+function lookups(tables: SearchTables) {
   const { classes, twistConj, prune, twistMove, flipMove, sliceSortedMove } = tables;
   const { classOf, sorted } = classes;
 
@@ -188,97 +201,142 @@ export function optimalLowerBound(tables: OptimalTables, cube: CubieCube): numbe
 }
 
 /**
+ * The IDA* machinery of one thread: a stack of search states (one frame per depth) and the moves
+ * that led to them. The sequential solver drives it alone; the parallel one gives each worker one.
+ */
+export interface Searcher {
+  readonly state: Int32Array;
+  readonly path: Uint8Array;
+  /** Nodes generated so far: moves tried, as Kociemba's solver counts them. */
+  readonly nodes: number;
+  /** Fills frame 0 from a cube and returns the first bound. */
+  setRoot(cube: CubieCube): number;
+  /** Fills frame 0 from another searcher's frame 0. */
+  copyRoot(frame: Int32Array): void;
+  /** Applies move m to frame `depth` if every bound of the result stays below `togo`. */
+  descend(depth: number, togo: number, m: number): boolean;
+  /** Searches below frame `depth` with `togo` moves left, after a move on `lastFace`. */
+  search(depth: number, togo: number, lastFace: number): Outcome;
+}
+
+/**
  * IDA* with Reid's heuristic: the largest of the three axis distances to the phase 1 subgroup
  * (or the smaller subgroup of the huge table) and the corners' distance, as in Kociemba's
- * optimal solver (solver.py of RubiksCube-OptimalSolver).
+ * optimal solver (solver.py of RubiksCube-OptimalSolver). `check` is polled every 2^20 nodes and
+ * stops the search by returning true.
  */
-export function createOptimalSolver(tables: OptimalTables): OptimalSolve {
+export function createSearcher(tables: SearchTables, check: () => boolean): Searcher {
   const { classes, twistConj, prune, cornerDepth, twistMove, flipMove, sliceSortedMove } = tables;
   const { classOf, sorted } = classes;
   const { cornerPermMove } = tables;
   const { exactDistance } = lookups(tables);
+  const state = new Int32Array((MAX_DEPTH + 1) * FRAME);
+  const path = new Uint8Array(MAX_DEPTH);
+  let nodes = 0;
 
+  function descend(depth: number, togo: number, m: number): boolean {
+    const at = depth * FRAME;
+    const to = at + FRAME;
+    const corners = cornerPermMove[state[at + CORNERS] * N_MOVES + m];
+    if (cornerDepth[corners] >= togo) return false;
+    for (let axis = 0; axis < 3; axis++) {
+      const ma = moveOnAxis[axis * N_MOVES + m];
+      const t = twistMove[state[at + TWIST + axis] * N_MOVES + ma];
+      const f = flipMove[state[at + FLIP + axis] * N_MOVES + ma];
+      const s = sliceSortedMove[state[at + SLICE + axis] * N_MOVES + ma];
+      const packed = classOf[(sorted ? s : SLICE_OF_SORTED[s]) * N_FLIP + f];
+      const index = (packed >>> 4) * N_TWIST + twistConj[t * N_SYM + (packed & 15)];
+      const mod3 = (prune[index >>> 4] >>> ((index & 15) << 1)) & 3;
+      const distance = NEXT_DISTANCE[state[at + DIST + axis] * 3 + mod3];
+      if (distance >= togo) return false;
+      state[to + TWIST + axis] = t;
+      state[to + FLIP + axis] = f;
+      state[to + SLICE + axis] = s;
+      state[to + DIST + axis] = distance;
+    }
+    // Equal non-zero distances d on all three axes mean at least d + 1 moves: a solution of
+    // exactly d moves would reach all three subgroups only with its last move, but the state
+    // before that move is one face turn from solved and so already in the subgroup of that
+    // turn's axis. Kociemba's solver.py applies the same rule.
+    const d = state[to + DIST];
+    if (d !== 0 && d === state[to + DIST + 1] && d === state[to + DIST + 2] && d + 1 >= togo) {
+      return false;
+    }
+    state[to + CORNERS] = corners;
+    return true;
+  }
+
+  // A node is only entered if all its bounds are below `togo`, so at togo = 0 all three subgroups
+  // are reached: oriented, every edge in its slice. Solved if the slices are in order and the
+  // corners in place.
+  function search(depth: number, togo: number, lastFace: number): Outcome {
+    if (togo === 0) {
+      const at = depth * FRAME;
+      const solved =
+        state[at + CORNERS] === 0 &&
+        state[at + SLICE] === 0 &&
+        state[at + SLICE + 1] === 0 &&
+        state[at + SLICE + 2] === 0;
+      return solved ? FOUND : NONE;
+    }
+    for (let m = 0; m < N_MOVES; m++) {
+      const face = (m / 3) | 0;
+      const diff = lastFace - face;
+      if (diff === 0 || diff === 3) continue;
+      if (++nodes % CHECK_INTERVAL === 0 && check()) return STOPPED;
+      if (!descend(depth, togo, m)) continue;
+      path[depth] = m;
+      const outcome = search(depth + 1, togo - 1, face);
+      if (outcome !== NONE) return outcome;
+    }
+    return NONE;
+  }
+
+  return {
+    state,
+    path,
+    get nodes() {
+      return nodes;
+    },
+    setRoot(cube) {
+      axisStarts(cube, exactDistance).forEach((start, axis) => {
+        state[TWIST + axis] = start.twist;
+        state[FLIP + axis] = start.flip;
+        state[SLICE + axis] = start.sliceSorted;
+        state[DIST + axis] = start.distance;
+      });
+      state[CORNERS] = getCornerPerm(cube.cp);
+      return firstBound(
+        [state[DIST], state[DIST + 1], state[DIST + 2]],
+        cornerDepth[state[CORNERS]],
+      );
+    },
+    copyRoot(frame) {
+      state.set(frame.subarray(0, FRAME));
+    },
+    descend,
+    search,
+  };
+}
+
+/** The sequential optimal solver. */
+export function createOptimalSolver(tables: OptimalTables): OptimalSolve {
   return function solve(cube, options = {}) {
     const { shouldStop, onProgress, upperBound } = options;
     const begin = performance.now();
-    const state = new Int32Array((MAX_DEPTH + 1) * FRAME);
-    const path = new Uint8Array(MAX_DEPTH);
     const depths: DepthStats[] = [];
-    let nodes = 0;
     let cancelled = false;
     let bound = 0;
 
-    axisStarts(cube, exactDistance).forEach((start, axis) => {
-      state[TWIST + axis] = start.twist;
-      state[FLIP + axis] = start.flip;
-      state[SLICE + axis] = start.sliceSorted;
-      state[DIST + axis] = start.distance;
-    });
-    state[CORNERS] = getCornerPerm(cube.cp);
-
     /** Reports progress and returns whether to stop. */
     const check = (): boolean => {
-      onProgress?.({ depth: bound, nodes, elapsedMs: performance.now() - begin });
+      onProgress?.({ depth: bound, nodes: searcher.nodes, elapsedMs: performance.now() - begin });
       if (shouldStop?.() === true) cancelled = true;
       return cancelled;
     };
+    const searcher = createSearcher(tables, check);
+    bound = searcher.setRoot(cube);
 
-    // `togo` moves remain; a node is only entered if all its bounds are at most `togo`.
-    function search(depth: number, togo: number, lastFace: number): Outcome {
-      const at = depth * FRAME;
-      if (togo === 0) {
-        // All three subgroups reached: oriented, every edge in its slice. Solved if the slices are
-        // in order and the corners in place.
-        const solved =
-          state[at + CORNERS] === 0 &&
-          state[at + SLICE] === 0 &&
-          state[at + SLICE + 1] === 0 &&
-          state[at + SLICE + 2] === 0;
-        return solved ? FOUND : NONE;
-      }
-      const to = at + FRAME;
-      moves: for (let m = 0; m < N_MOVES; m++) {
-        const face = (m / 3) | 0;
-        const diff = lastFace - face;
-        if (diff === 0 || diff === 3) continue;
-        if (++nodes % CHECK_INTERVAL === 0 && check()) return STOPPED;
-        const corners = cornerPermMove[state[at + CORNERS] * N_MOVES + m];
-        if (cornerDepth[corners] >= togo) continue;
-        for (let axis = 0; axis < 3; axis++) {
-          const ma = moveOnAxis[axis * N_MOVES + m];
-          const t = twistMove[state[at + TWIST + axis] * N_MOVES + ma];
-          const f = flipMove[state[at + FLIP + axis] * N_MOVES + ma];
-          const s = sliceSortedMove[state[at + SLICE + axis] * N_MOVES + ma];
-          const packed = classOf[(sorted ? s : SLICE_OF_SORTED[s]) * N_FLIP + f];
-          const index = (packed >>> 4) * N_TWIST + twistConj[t * N_SYM + (packed & 15)];
-          const mod3 = (prune[index >>> 4] >>> ((index & 15) << 1)) & 3;
-          const distance = NEXT_DISTANCE[state[at + DIST + axis] * 3 + mod3];
-          if (distance >= togo) continue moves;
-          state[to + TWIST + axis] = t;
-          state[to + FLIP + axis] = f;
-          state[to + SLICE + axis] = s;
-          state[to + DIST + axis] = distance;
-        }
-        // Equal non-zero distances d on all three axes mean at least d + 1 moves: a solution of
-        // exactly d moves would reach all three subgroups only with its last move, but the state
-        // before that move is one face turn from solved and so already in the subgroup of that
-        // turn's axis. Kociemba's solver.py applies the same rule.
-        const d = state[to + DIST];
-        if (d !== 0 && d === state[to + DIST + 1] && d === state[to + DIST + 2] && d + 1 >= togo) {
-          continue;
-        }
-        state[to + CORNERS] = corners;
-        path[depth] = m;
-        const outcome = search(depth + 1, togo - 1, face);
-        if (outcome !== NONE) return outcome;
-      }
-      return NONE;
-    }
-
-    bound = firstBound(
-      [state[DIST], state[DIST + 1], state[DIST + 2]],
-      cornerDepth[state[CORNERS]],
-    );
     const result = (
       moves: readonly FaceTurn[] | undefined,
       provedBound = false,
@@ -286,7 +344,7 @@ export function createOptimalSolver(tables: OptimalTables): OptimalSolve {
       moves,
       cancelled,
       provedBound,
-      nodes,
+      nodes: searcher.nodes,
       elapsedMs: performance.now() - begin,
       depths,
     });
@@ -294,13 +352,18 @@ export function createOptimalSolver(tables: OptimalTables): OptimalSolve {
     for (; bound <= MAX_DEPTH; bound++) {
       if (upperBound !== undefined && bound >= upperBound.length) return result(upperBound, true);
       if (check()) return result(undefined);
-      const nodesBefore = nodes;
+      const nodesBefore = searcher.nodes;
       const start = performance.now();
-      const outcome = search(0, bound, -1);
+      const outcome = searcher.search(0, bound, -1);
       if (outcome === STOPPED) return result(undefined);
-      depths.push({ depth: bound, nodes: nodes - nodesBefore, ms: performance.now() - start });
-      if (outcome === FOUND)
-        return result(Array.from(path.subarray(0, bound), (m) => FACE_TURNS[m]));
+      depths.push({
+        depth: bound,
+        nodes: searcher.nodes - nodesBefore,
+        ms: performance.now() - start,
+      });
+      if (outcome === FOUND) {
+        return result(Array.from(searcher.path.subarray(0, bound), (m) => FACE_TURNS[m]));
+      }
     }
     throw new Error(`No solution within ${String(MAX_DEPTH)} moves`);
   };

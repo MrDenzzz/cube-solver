@@ -7,7 +7,7 @@ export {
   type TwoPhaseSolve,
   type TwoPhaseStats,
 } from './two-phase.ts';
-export { createTypeScriptEngine } from './engine.ts';
+export { createTypeScriptEngine, type EngineOptions } from './engine.ts';
 export {
   buildTwoPhaseTables,
   TWO_PHASE_TABLE_COUNT,
@@ -30,3 +30,10 @@ export {
   type OptimalTier,
 } from './optimal-tables.ts';
 export { axisDistances, optimalLowerBound } from './optimal.ts';
+export {
+  createParallelOptimalSolver,
+  runHelper,
+  type HelperInit,
+  type HelperPool,
+} from './parallel.ts';
+export type { SearchTables } from './optimal.ts';

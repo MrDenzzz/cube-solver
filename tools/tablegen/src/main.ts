@@ -27,7 +27,7 @@ if (args.check !== undefined) {
   const start = performance.now();
   const saved = new Uint8Array(readFileSync(args.check));
   const tables = buildOptimalTables(tier, moves, saved);
-  const reused = tables?.file === saved;
+  const reused = tables?.restored === true;
   console.log(
     `${args.check}: ${reused ? 'valid' : 'rejected'} in ${(performance.now() - start).toFixed(0)} ms`,
   );

@@ -2,6 +2,7 @@ import { faceTurnIndex, type FaceTurn } from '@cube/core';
 import type { OptimalTier, SolveHooks, SolveResult, SolverEngine } from '@cube/solver-contracts';
 import { createOptimalSolver, optimalLowerBound, type OptimalSolve } from './optimal.ts';
 import { buildOptimalTables, type OptimalTables } from './optimal-tables.ts';
+import { createParallelOptimalSolver, type HelperPool } from './parallel.ts';
 import { buildTwoPhaseTables, TWO_PHASE_TABLE_COUNT, type TwoPhaseTables } from './tables.ts';
 import { createTwoPhaseSolver, type TwoPhaseSolve } from './two-phase.ts';
 
@@ -12,12 +13,28 @@ import { createTwoPhaseSolver, type TwoPhaseSolve } from './two-phase.ts';
  */
 const UPPER_BOUND_MS = 1000;
 
+export interface EngineOptions {
+  /**
+   * Starts helper threads for the optimal search. Without it, or without shared memory, the
+   * optimal search runs in the engine's own thread.
+   */
+  readonly helpers?: () => HelperPool;
+}
+
 /** The TypeScript solvers behind the engine-neutral worker protocol. */
-export function createTypeScriptEngine(): SolverEngine {
+export function createTypeScriptEngine({ helpers }: EngineOptions = {}): SolverEngine {
+  const parallel = helpers !== undefined && typeof SharedArrayBuffer === 'function';
+  // Started on the first optimal preparation and kept: helpers are reused across tiers.
+  let pool: HelperPool | undefined;
   let fast: { readonly tables: TwoPhaseTables; readonly solve: TwoPhaseSolve } | undefined;
   // One tier at a time: the huge table is too large to keep the standard one next to it.
   let optimal:
-    | { readonly tier: OptimalTier; readonly tables: OptimalTables; readonly solve: OptimalSolve }
+    | {
+        readonly tier: OptimalTier;
+        readonly tables: OptimalTables;
+        readonly solve: OptimalSolve;
+        readonly dispose: () => void;
+      }
     | undefined;
 
   const ready = () => {
@@ -69,6 +86,8 @@ export function createTypeScriptEngine(): SolverEngine {
 
   return {
     name: 'TypeScript',
+    allocateTableFile: (size) =>
+      new Uint8Array(parallel ? new SharedArrayBuffer(size) : new ArrayBuffer(size)),
     init(onProgress) {
       let done = 0;
       let tableBytes = 0;
@@ -80,14 +99,21 @@ export function createTypeScriptEngine(): SolverEngine {
       return { tableBytes };
     },
     prepareOptimal(tier, saved, hooks) {
+      optimal?.dispose();
       optimal = undefined;
-      const tables = buildOptimalTables(tier, ready().tables, saved, hooks);
+      const tables = buildOptimalTables(tier, ready().tables, saved, hooks, parallel);
       if (tables === null) return null;
-      optimal = { tier, tables, solve: createOptimalSolver(tables) };
+      if (parallel) {
+        pool ??= helpers();
+        const solve = createParallelOptimalSolver(tables, pool);
+        optimal = { tier, tables, solve, dispose: solve.dispose };
+      } else {
+        optimal = { tier, tables, solve: createOptimalSolver(tables), dispose: () => undefined };
+      }
       return {
         tableBytes: tables.file.byteLength + tables.classes.classOf.byteLength,
         file: tables.file,
-        restored: tables.file === saved,
+        restored: tables.restored,
       };
     },
     solve(cube, options, hooks) {

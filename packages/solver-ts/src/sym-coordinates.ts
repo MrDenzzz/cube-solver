@@ -40,10 +40,13 @@ export function flipSliceSize(sorted: boolean): number {
   return (sorted ? N_SLICE_SORTED : N_SLICE) * N_FLIP;
 }
 
-export function buildFlipSliceClasses(sorted: boolean): FlipSliceClasses {
+/** With `shared`, the large class index lives in a SharedArrayBuffer for parallel search. */
+export function buildFlipSliceClasses(sorted: boolean, shared = false): FlipSliceClasses {
   const size = flipSliceSize(sorted);
   const expected = sorted ? N_FLIPSLICESORTED_CLASS : N_FLIPSLICE_CLASS;
-  const classOf = new Uint32Array(size).fill(UNASSIGNED);
+  const classOf = (
+    shared ? new Uint32Array(new SharedArrayBuffer(size * 4)) : new Uint32Array(size)
+  ).fill(UNASSIGNED);
   const representative = new Uint32Array(expected);
   const stabilizer = new Uint16Array(expected);
   const ep = new Uint8Array(12);
