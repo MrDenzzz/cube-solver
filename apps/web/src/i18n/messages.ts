@@ -75,6 +75,12 @@ const en = {
     'Even daylight works best. Check the stickers afterwards and fix any with a click: red and orange are the easiest to confuse.',
   'camera.error.denied': 'The browser was not allowed to use the camera.',
   'camera.error.missing': 'No camera was found.',
+  'camera.error.busy':
+    'The camera is busy or would not start. Close other apps and tabs that may be using it (video calls, OBS, another browser tab), or pick another camera, and try again.',
+  'camera.retry': 'Try again',
+  'camera.device': 'Camera',
+  'camera.default': 'Default',
+  'camera.numbered': 'Camera {n}',
   'camera.error.unsupported': 'This browser cannot use a camera on this page (it needs HTTPS).',
   'camera.error.failed': 'The camera did not start: {message}',
   'stickers.faceLabel': '{face} face',
@@ -347,6 +353,12 @@ const ru: Record<MessageKey, string> = {
     'Лучше всего — ровный дневной свет. После сканирования проверьте наклейки и исправьте ошибки кликом: чаще всего путаются красный и оранжевый.',
   'camera.error.denied': 'Браузеру не разрешён доступ к камере.',
   'camera.error.missing': 'Камера не найдена.',
+  'camera.error.busy':
+    'Камера занята или не запускается. Закройте программы и вкладки, которые могут её использовать (видеозвонки, OBS, другая вкладка браузера), или выберите другую камеру и повторите.',
+  'camera.retry': 'Повторить',
+  'camera.device': 'Камера',
+  'camera.default': 'По умолчанию',
+  'camera.numbered': 'Камера {n}',
   'camera.error.unsupported':
     'Этот браузер не может использовать камеру на этой странице (нужен HTTPS).',
   'camera.error.failed': 'Камера не запустилась: {message}',

@@ -22,6 +22,10 @@
   to 1280×720, with a grid over the centred square of 70 % of the frame's shorter side, read 8
   times a second at 240 px. Each cell's middle 40 % is reduced to the per-channel median, which
   ignores glare spots. The preview is not mirrored, so a picture's left is the face's left.
+  When a camera will not start with that size (`NotReadableError`, which some webcams give for
+  a size they list), it is asked once more with no wishes beyond the device. A camera that still
+  will not start, usually because another program holds it or a virtual camera is the default,
+  gets an explanation, a button to try again and a choice of cameras.
 - **Taking a face by itself.** A face is taken when every cell but one is one colour (the 10th
   to 90th percentile spread of each channel stays under 45), at least 60 % of the borders between
   cells have a dark line across them (the gaps between pieces; a wall or a face half out of the
