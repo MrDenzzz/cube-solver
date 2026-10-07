@@ -21,5 +21,5 @@ Background research for these decisions: [../research.md](../research.md).
 - [0006. Rust to WebAssembly toolchain](0006-rust-to-webassembly-toolchain.md) — Accepted
 - [0007. TypeScript vs WebAssembly, and threads](0007-typescript-vs-webassembly.md) — Accepted
 - [0008. 4×4×4: three-phase reduction with an exact edge-pairing table](0008-four-by-four-reduction.md) — Accepted
-- [0009. Camera input: one face at a time, CIEDE2000 and balanced groups](0009-camera-input.md) — Accepted
+- [0009. Camera input: faces in any order, CIEDE2000, balanced groups and a placement search](0009-camera-input.md) — Accepted
 - [0010. Hosting: nginx on our own server, for cross-origin isolation](0010-hosting.md) — Accepted

@@ -24,10 +24,12 @@ as "turn the right face so the front goes up".
 - **4×4×4:** reduction to a 3×3×3 in three phases after Chen Shuang's TPR solver, with an exact
   edge-pairing table, finished by the two-phase solver: 45 moves on average in about 0.6 s.
 - **Input:** WCA and SiGN notation, with errors pointed out by position; a sticker editor with
-  keyboard entry and validation that highlights impossible pieces; a camera scan that reads a
-  face per shot and classifies colours with CIEDE2000 into balanced groups.
-- **Guide:** how to hold the cube, which layer to turn and which way, an arrow on the 3D cube,
-  and the screen kept awake while you follow it.
+  keyboard entry and validation that highlights impossible pieces; a camera scan where you just
+  turn the cube in front of the camera: faces are taken by themselves in any order and any way
+  up, the colours are named with CIEDE2000 and the pictures placed on the cube by a search.
+- **Guide:** how to hold the cube (on the 4×4×4, by naming the corner at the top front right),
+  which layer to turn and which way, an arrow on the 3D cube, and the screen kept awake while
+  you follow it.
 - **Benchmarks page:** run the solvers on your own device and compare with recorded numbers.
 
 ![Entering a 4×4×4 sticker by sticker](docs/media/stickers-4x4.png)
@@ -89,7 +91,7 @@ Each choice with alternatives and measurements is an [architecture decision reco
 6. [Rust to WebAssembly toolchain](docs/adr/0006-rust-to-webassembly-toolchain.md)
 7. [TypeScript vs WebAssembly, and threads](docs/adr/0007-typescript-vs-webassembly.md)
 8. [4×4×4: three-phase reduction with an exact edge-pairing table](docs/adr/0008-four-by-four-reduction.md)
-9. [Camera input: one face at a time, CIEDE2000 and balanced groups](docs/adr/0009-camera-input.md)
+9. [Camera input: faces in any order, CIEDE2000, balanced groups and a placement search](docs/adr/0009-camera-input.md)
 10. [Hosting: nginx on our own server, for cross-origin isolation](docs/adr/0010-hosting.md)
 
 Research done before the first line of code, with sources: [docs/research.md](docs/research.md).

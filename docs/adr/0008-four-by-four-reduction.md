@@ -81,9 +81,10 @@ Ryzen 7 9800X3D, Windows 11, Node 24.14.1. Raw results: `tools/bench/results/red
 
 - The 4×4×4 solver exists in TypeScript only. With the WebAssembly engine selected, a TypeScript
   worker of its own serves the 4×4×4; porting the reduction to Rust is possible but not planned.
-- Without fixed centres the instructions cannot name a hold by colours: the guide asks to hold the
-  cube as it was held to scramble it or to enter its first face, and the sticker hints name
-  positions instead of colours.
+- Without fixed centres the instructions cannot name a hold by centre colours. The guide names
+  the corner at the top front right of the starting state and the colour on each of its sides,
+  which fixes the hold whichever way the cube was scrambled, typed in or scanned; the sticker
+  hints name positions instead of colours.
 - Sticker entry on a phone is cramped: the 4×4×4 net is 16 stickers wide, about 16 px each at
   390 px. Camera input (step 8) is the answer there.
 
