@@ -48,3 +48,22 @@ pnpm --filter @cube/bench bench:optimal --engine wasm --tier huge --only "random
 
 `scripts/optimal-suite.sh` runs the comparison behind ADR 0007 with engines interleaved; its
 results are the `optimal-*` files in [results](results).
+
+## 4×4×4 reduction
+
+`bench:four` solves random 4×4×4 states (`randomCube4`) with the reduction solver and reports
+length, phase lengths and time. The results behind ADR 0008 are the `reduction-ts-*` files.
+
+```sh
+pnpm --filter @cube/bench bench:four --count 200 --json results/reduction-ts-100-4.json
+```
+
+| Option                | Default | Meaning                                                    |
+| --------------------- | ------- | ---------------------------------------------------------- |
+| `--count`             | 100     | Number of cubes                                            |
+| `--seed`              | 1       | Generator seed for the measured cubes                      |
+| `--phase1-candidates` | 200     | Phase 1 solutions kept for phase 2                         |
+| `--phase2-candidates` | 100     | Phase 2 solutions that leave the wings ready for phase 3   |
+| `--phase3-candidates` | 4       | Reduced cubes finished as a 3×3×3; the shortest total wins |
+| `--finish-time`       | 50      | Milliseconds for each 3×3×3 finish                         |
+| `--warmup`            | 3       | Unmeasured solves first, on cubes from another seed        |

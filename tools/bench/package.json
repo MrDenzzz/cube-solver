@@ -9,7 +9,8 @@
     "typecheck": "tsc",
     "test": "vitest run --passWithNoTests",
     "bench": "node src/main.ts",
-    "bench:optimal": "node src/optimal.ts"
+    "bench:optimal": "node src/optimal.ts",
+    "bench:four": "node src/four.ts"
   },
   "devDependencies": {
     "@types/node": "catalog:",
