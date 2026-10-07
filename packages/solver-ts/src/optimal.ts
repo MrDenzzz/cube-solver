@@ -279,12 +279,37 @@ export function createSearcher(tables: SearchTables, check: () => boolean): Sear
         state[at + SLICE + 2] === 0;
       return solved ? FOUND : NONE;
     }
-    for (let m = 0; m < N_MOVES; m++) {
+    const at = depth * FRAME;
+    const to = at + FRAME;
+    moves: for (let m = 0; m < N_MOVES; m++) {
       const face = (m / 3) | 0;
       const diff = lastFace - face;
       if (diff === 0 || diff === 3) continue;
       if (++nodes % CHECK_INTERVAL === 0 && check()) return STOPPED;
-      if (!descend(depth, togo, m)) continue;
+      // The body of `descend`, written out: V8 does not inline it here, and the call cost a third
+      // of the search speed (15.7 → 10.7 M nodes/s, standard table, through depth 16).
+      const corners = cornerPermMove[state[at + CORNERS] * N_MOVES + m];
+      if (cornerDepth[corners] >= togo) continue;
+      for (let axis = 0; axis < 3; axis++) {
+        const ma = moveOnAxis[axis * N_MOVES + m];
+        const t = twistMove[state[at + TWIST + axis] * N_MOVES + ma];
+        const f = flipMove[state[at + FLIP + axis] * N_MOVES + ma];
+        const s = sliceSortedMove[state[at + SLICE + axis] * N_MOVES + ma];
+        const packed = classOf[(sorted ? s : SLICE_OF_SORTED[s]) * N_FLIP + f];
+        const index = (packed >>> 4) * N_TWIST + twistConj[t * N_SYM + (packed & 15)];
+        const mod3 = (prune[index >>> 4] >>> ((index & 15) << 1)) & 3;
+        const distance = NEXT_DISTANCE[state[at + DIST + axis] * 3 + mod3];
+        if (distance >= togo) continue moves;
+        state[to + TWIST + axis] = t;
+        state[to + FLIP + axis] = f;
+        state[to + SLICE + axis] = s;
+        state[to + DIST + axis] = distance;
+      }
+      const d = state[to + DIST];
+      if (d !== 0 && d === state[to + DIST + 1] && d === state[to + DIST + 2] && d + 1 >= togo) {
+        continue;
+      }
+      state[to + CORNERS] = corners;
       path[depth] = m;
       const outcome = search(depth + 1, togo - 1, face);
       if (outcome !== NONE) return outcome;
