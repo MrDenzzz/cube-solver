@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/i18n.ts';
 import { FACE_COLOURS } from '../scheme.ts';
 import type { PuzzleSize } from '../stickers/stickers.ts';
+import { readStored, writeStored } from '../ui/storage.ts';
 import ui from '../ui/ui.module.css';
 import styles from './CameraPanel.module.css';
 import { IDLE, matchingFace, watch, type Verdict, type Watch } from './capture.ts';
@@ -14,7 +15,7 @@ type CameraState =
   | { readonly kind: 'live'; readonly width: number; readonly height: number }
   | {
       readonly kind: 'error';
-      readonly reason: 'denied' | 'missing' | 'busy' | 'unsupported' | 'failed';
+      readonly reason: 'denied' | 'missing' | 'busy' | 'dark' | 'unsupported' | 'failed';
       readonly message: string;
     };
 
@@ -24,26 +25,39 @@ const READ_SIDE = 240;
 
 /** The size asked of the camera once it is open. */
 const PREFERRED = { width: { ideal: 1280 }, height: { ideal: 720 } } as const;
+/** How long a camera may take to send its first picture. */
+const FIRST_PICTURE_MS = 4000;
+/** Readings in a row that are all but black before the camera is reported as dark: 3 s. */
+const DARK_READINGS = 24;
+const CAMERA_KEY = 'cube-solver.camera';
 
 /**
- * Opens a camera: the chosen one, else the rear one on a phone, else the browser's default.
+ * Phones and tablets have a rear camera to ask for. A computer is not asked for one: with
+ * several cameras (virtual ones, a phone linked as a webcam) one may call itself rear-facing,
+ * get chosen, and send nothing, while the browser's own choice works.
+ */
+const hasRearCamera = () => matchMedia('(pointer: coarse)').matches;
+
+/**
+ * Opens a camera: the one picked, else the rear one on a phone, else the browser's default.
  * The size is asked for only after the device is open: as a wish when opening, it makes Chrome
- * prefer whichever camera offers it, which on a computer with virtual cameras can be one that
- * is not running. If the first choice still will not start, the browser's default is asked.
+ * prefer whichever camera offers it, which can be one that is not running. If the first choice
+ * will not start, or the picked camera is gone, the browser's default is asked.
  */
 async function openCamera(deviceId: string | null): Promise<MediaStream> {
-  const device = deviceId === null ? null : { deviceId: { exact: deviceId } };
+  const first: MediaTrackConstraints | true =
+    deviceId !== null
+      ? { deviceId: { exact: deviceId } }
+      : hasRearCamera()
+        ? { facingMode: { ideal: 'environment' } }
+        : true;
   let stream: MediaStream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({
-      video: device ?? { facingMode: { ideal: 'environment' } },
-      audio: false,
-    });
+    stream = await navigator.mediaDevices.getUserMedia({ video: first, audio: false });
   } catch (error) {
     const name = error instanceof DOMException ? error.name : '';
-    if (device !== null || (name !== 'NotReadableError' && name !== 'OverconstrainedError')) {
-      throw error;
-    }
+    const retry = ['NotReadableError', 'OverconstrainedError', 'NotFoundError'].includes(name);
+    if (first === true || !retry) throw error;
     stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
   }
   // A camera that cannot do the size keeps its own: the reading works at any size.
@@ -52,6 +66,28 @@ async function openCamera(deviceId: string | null): Promise<MediaStream> {
     ?.applyConstraints(PREFERRED)
     .catch(() => undefined);
   return stream;
+}
+
+/** Whether the video gets a picture of some size within FIRST_PICTURE_MS. */
+function firstPicture(element: HTMLVideoElement): Promise<boolean> {
+  return new Promise((resolve) => {
+    if (element.videoWidth > 0) {
+      resolve(true);
+      return;
+    }
+    const done = (ok: boolean) => {
+      clearTimeout(timer);
+      element.removeEventListener('resize', onResize);
+      resolve(ok);
+    };
+    const onResize = () => {
+      if (element.videoWidth > 0) done(true);
+    };
+    const timer = setTimeout(() => {
+      done(false);
+    }, FIRST_PICTURE_MS);
+    element.addEventListener('resize', onResize);
+  });
 }
 
 const REASONS: Readonly<Record<string, 'denied' | 'missing' | 'busy'>> = {
@@ -93,11 +129,14 @@ export function CameraPanel({
   const [verdict, setVerdict] = useState<Verdict>('none');
   const [unplaceable, setUnplaceable] = useState(false);
   // A new attempt restarts the camera, with the device picked if there is a choice.
-  const [attempt, setAttempt] = useState<{ readonly deviceId: string | null; readonly n: number }>({
-    deviceId: null,
-    n: 0,
-  });
+  const [attempt, setAttempt] = useState<{ readonly deviceId: string | null; readonly n: number }>(
+    () => ({ deviceId: readStored(CAMERA_KEY), n: 0 }),
+  );
   const [devices, setDevices] = useState<readonly MediaDeviceInfo[]>([]);
+  // The camera actually open, which the browser chose when none was picked.
+  const [active, setActive] = useState<string | null>(null);
+  const [dark, setDark] = useState(false);
+  const darkReadings = useRef(0);
   const watching = useRef<Watch>(IDLE);
   // The reading loop runs outside React's renders and needs the latest pictures.
   const takenNow = useRef(taken);
@@ -105,7 +144,9 @@ export function CameraPanel({
 
   useEffect(() => {
     let stream: MediaStream | undefined;
-    let stopped = false;
+    // Read through a function: a check after an await must see the cleanup's change.
+    const run = { stopped: false };
+    const stopped = () => run.stopped;
     const element = video.current;
     // Absent outside secure contexts.
     if (typeof navigator.mediaDevices === 'undefined' || element === null) {
@@ -117,28 +158,43 @@ export function CameraPanel({
     const listDevices = () => {
       navigator.mediaDevices.enumerateDevices().then(
         (all) => {
-          if (!stopped) setDevices(all.filter((d) => d.kind === 'videoinput'));
+          if (!stopped()) setDevices(all.filter((d) => d.kind === 'videoinput'));
         },
         () => undefined,
       );
     };
+    // The size can change after the camera starts.
+    const onResize = () => {
+      if (element.videoWidth > 0) {
+        setCamera({ kind: 'live', width: element.videoWidth, height: element.videoHeight });
+      }
+    };
     openCamera(attempt.deviceId)
       .then(async (opened) => {
         stream = opened;
-        if (stopped) return;
+        if (stopped()) return;
+        setActive(opened.getVideoTracks()[0]?.getSettings().deviceId ?? null);
         element.srcObject = opened;
-        await element.play();
-        setCamera({ kind: 'live', width: element.videoWidth, height: element.videoHeight });
+        // Not awaited: on a stream that never sends a frame it would never settle.
+        element.play().catch(() => undefined);
         listDevices();
+        if (!(await firstPicture(element))) {
+          if (!stopped()) setCamera({ kind: 'error', reason: 'dark', message: '' });
+          return;
+        }
+        if (stopped()) return;
+        element.addEventListener('resize', onResize);
+        onResize();
       })
       .catch((error: unknown) => {
-        if (stopped) return;
+        if (stopped()) return;
         const name = error instanceof DOMException ? error.name : '';
         setCamera({ kind: 'error', reason: REASONS[name] ?? 'failed', message: String(error) });
         listDevices();
       });
     return () => {
-      stopped = true;
+      run.stopped = true;
+      element.removeEventListener('resize', onResize);
       for (const track of stream?.getTracks() ?? []) track.stop();
     };
   }, [attempt]);
@@ -190,6 +246,10 @@ export function CameraPanel({
       const reading = read();
       if (reading === null) return;
       setLive(reading);
+      // A picture that stays black: a camera that runs but shows nothing, like an idle virtual one.
+      const black = reading.cells.every((cell) => cell.lab[0] < 4);
+      darkReadings.current = black ? darkReadings.current + 1 : 0;
+      setDark(darkReadings.current >= DARK_READINGS);
       const next = watch(watching.current, reading, takenNow.current, size);
       watching.current = next.state;
       setVerdict(next.verdict);
@@ -280,9 +340,10 @@ export function CameraPanel({
           {t('camera.device')}
           <select
             className={ui.select}
-            value={attempt.deviceId ?? ''}
+            value={attempt.deviceId ?? active ?? ''}
             onChange={(event) => {
               const deviceId = event.target.value === '' ? null : event.target.value;
+              writeStored(CAMERA_KEY, deviceId ?? '');
               setAttempt((a) => ({ deviceId, n: a.n + 1 }));
             }}
           >
@@ -296,8 +357,8 @@ export function CameraPanel({
         </label>
       )}
       {camera.kind === 'live' && (
-        <p className={unplaceable ? ui.errors : ui.status} aria-live="polite">
-          {status}
+        <p className={unplaceable || dark ? ui.errors : ui.status} aria-live="polite">
+          {dark ? t('camera.error.dark') : status}
         </p>
       )}
 

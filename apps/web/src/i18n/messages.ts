@@ -77,6 +77,7 @@ const en = {
   'camera.error.missing': 'No camera was found.',
   'camera.error.busy':
     'The camera is busy or would not start. Close other apps and tabs that may be using it (video calls, OBS, another browser tab), or pick another camera, and try again.',
+  'camera.error.dark': 'This camera sends no picture. Pick another camera below.',
   'camera.retry': 'Try again',
   'camera.device': 'Camera',
   'camera.default': 'Default',
@@ -355,6 +356,7 @@ const ru: Record<MessageKey, string> = {
   'camera.error.missing': 'Камера не найдена.',
   'camera.error.busy':
     'Камера занята или не запускается. Закройте программы и вкладки, которые могут её использовать (видеозвонки, OBS, другая вкладка браузера), или выберите другую камеру и повторите.',
+  'camera.error.dark': 'Эта камера не передаёт изображение. Выберите другую камеру ниже.',
   'camera.retry': 'Повторить',
   'camera.device': 'Камера',
   'camera.default': 'По умолчанию',

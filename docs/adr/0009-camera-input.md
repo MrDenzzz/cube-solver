@@ -18,16 +18,18 @@
 
 ## Decision
 
-- **Reading the picture.** The rear camera (`facingMode: environment`) where there is one, at up
-  to 1280×720, with a grid over the centred square of 70 % of the frame's shorter side, read 8
-  times a second at 240 px. Each cell's middle 40 % is reduced to the per-channel median, which
-  ignores glare spots. The preview is not mirrored, so a picture's left is the face's left.
-  The camera is opened with no size in mind and the size asked for afterwards: as a wish when
-  opening, a size makes Chrome prefer whichever camera offers it, which on a computer with
-  virtual cameras picked one that was not running and failed with `NotReadableError` (seen on
-  a desktop with seven cameras). If the first choice still fails, the browser's default camera
-  is asked; if that fails too, the panel explains the likely causes and offers to try again and
-  to pick a camera.
+- **Reading the picture.** A grid over the centred square of 70 % of the frame's shorter side,
+  read 8 times a second at 240 px. Each cell's middle 40 % is reduced to the per-channel median,
+  which ignores glare spots. The preview is not mirrored, so a picture's left is the face's left.
+- **Choosing the camera.** On a phone or tablet (a coarse pointer) the rear camera is asked for;
+  on a computer, the browser's own choice. A camera picked from the list is remembered. The
+  size, up to 1280×720, is applied to the open track, never asked for when opening: both a size
+  and a facing mode make Chrome prefer whichever camera matches them. On a desktop with seven
+  cameras that picked one that failed with `NotReadableError`, then, with the size moved after
+  opening, one that opened but sent no picture, while the webcam chosen in Chrome's settings
+  worked. If a picked camera is gone or the first choice will not start, the browser's default
+  is asked. A camera that still fails, or sends no picture within 4 s or only black for 3 s,
+  gets an explanation, a button to try again and the list of cameras.
 - **Taking a face by itself.** A face is taken when every cell but one is one colour (the 10th
   to 90th percentile spread of each channel stays under 45), at least 60 % of the borders between
   cells have a dark line across them (the gaps between pieces; a wall or a face half out of the
