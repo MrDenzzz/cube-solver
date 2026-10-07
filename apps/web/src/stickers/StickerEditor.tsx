@@ -1,10 +1,18 @@
 import { FACES, isFace, type Face } from '@cube/core';
-import { useMemo, useRef, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import {
+  lazy,
+  Suspense,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent,
+} from 'react';
 import { useI18n } from '../i18n/i18n.ts';
 import { FACE_COLOURS, UNKNOWN } from '../scheme.ts';
 import { cx } from '../ui/cx.ts';
 import ui from '../ui/ui.module.css';
-import { capitalise, colourName } from './describe.ts';
+import { capitalise, colourName, holdHint } from './describe.ts';
 import styles from './StickerEditor.module.css';
 import {
   blankStickers,
@@ -23,8 +31,10 @@ import {
 /** Opposite colours side by side, the way cubers think of them. */
 const PALETTE: readonly Face[] = ['U', 'D', 'F', 'B', 'R', 'L'];
 
-/** The colour on top while a face is held towards you, as the hints describe. */
-const TOP: Readonly<Record<Face, Face>> = { U: 'B', R: 'U', F: 'U', D: 'F', L: 'U', B: 'U' };
+// Only loaded when asked for: most visits never open the camera.
+const CameraPanel = lazy(() =>
+  import('../camera/CameraPanel.tsx').then((m) => ({ default: m.CameraPanel })),
+);
 
 const ARROWS: Readonly<Record<string, readonly [number, number]>> = {
   ArrowUp: [-1, 0],
@@ -55,6 +65,7 @@ export function StickerEditor({
   const blank = useMemo(() => blankStickers(size), [size]);
   const [brush, setBrush] = useState<Face>('U');
   const [cursor, setCursor] = useState(firstFront);
+  const [scanning, setScanning] = useState(false);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
   const counts = colourCounts(stickers);
   const highlighted = useMemo(
@@ -99,18 +110,26 @@ export function StickerEditor({
     );
   };
 
-  // A 3×3×3 is held by its fixed centres; a 4×4×4 has none, so its hints only name positions.
-  const hint =
-    size === 3
-      ? t(`stickers.hint.${activeFace}`, {
-          facing: colourName(activeFace, t),
-          top: colourName(TOP[activeFace], t),
-        })
-      : t(`stickers.hint4.${activeFace}`);
+  if (scanning) {
+    return (
+      <Suspense fallback={<p className={ui.muted}>{t('camera.starting')}</p>}>
+        <CameraPanel
+          size={size}
+          onApply={(scanned) => {
+            onChange(scanned);
+            setScanning(false);
+          }}
+          onClose={() => {
+            setScanning(false);
+          }}
+        />
+      </Suspense>
+    );
+  }
 
   return (
     <div className={styles.editor}>
-      <p className={styles.hint}>{hint}</p>
+      <p className={styles.hint}>{holdHint(activeFace, size, t)}</p>
 
       {/* One tab stop for the whole net: arrow keys move inside it. */}
       <div
@@ -191,6 +210,15 @@ export function StickerEditor({
       <StickerStatus check={check} />
       <p className={cx(ui.muted, styles.keys)}>{t('stickers.keys')}</p>
       <div className={ui.row}>
+        <button
+          type="button"
+          className={ui.button}
+          onClick={() => {
+            setScanning(true);
+          }}
+        >
+          {t('camera.open')}
+        </button>
         <button
           type="button"
           className={ui.button}

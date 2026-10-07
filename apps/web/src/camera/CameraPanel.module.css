@@ -1,0 +1,89 @@
+.camera {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.hint {
+  min-height: 3em;
+  margin: 0;
+  font-size: 13px;
+}
+
+.frame {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  background: #000;
+  border-radius: 8px;
+}
+
+/* Not mirrored: the picture's left is the face's left, as the facelet order needs. */
+.video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.grid {
+  position: absolute;
+  display: grid;
+  border: 2px solid rgb(255 255 255 / 0.9);
+  border-radius: 6px;
+  box-shadow: 0 0 0 9999px rgb(0 0 0 / 0.35);
+  pointer-events: none;
+}
+
+.cell {
+  border: 1px solid rgb(255 255 255 / 0.55);
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  color: #fff;
+}
+
+.faces {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 2px;
+  background: var(--surface-2);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.face[aria-pressed='true'] {
+  border-color: var(--accent);
+}
+
+.thumb {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  max-width: 40px;
+  aspect-ratio: 1;
+}
+
+.thumb > span {
+  background: var(--surface);
+  border-radius: 1px;
+}
+
+.label {
+  font-size: 11px;
+}

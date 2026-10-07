@@ -54,6 +54,22 @@ const en = {
   'stickers.hint4.D':
     'From the start, tilt the bottom towards you: the bottom face is towards you, the front face on top.',
   'stickers.net': 'Unfolded cube',
+  'camera.open': 'Scan with the camera',
+  'camera.aim':
+    'Fill the grid with that face. With a laptop camera, turn the face to the camera instead of to yourself.',
+  'camera.starting': 'Starting the camera…',
+  'camera.capture': 'Capture',
+  'camera.apply': 'Use the colours',
+  'camera.cancel': 'Cancel',
+  'camera.faces': 'Faces',
+  'camera.face': 'Capture the {face} face',
+  'camera.progress': 'Faces captured: {count} of 6',
+  'camera.note':
+    'Even daylight works best. Check the stickers afterwards and fix any with a click: red and orange are the easiest to confuse.',
+  'camera.error.denied': 'The browser was not allowed to use the camera.',
+  'camera.error.missing': 'No camera was found.',
+  'camera.error.unsupported': 'This browser cannot use a camera on this page (it needs HTTPS).',
+  'camera.error.failed': 'The camera did not start: {message}',
   'stickers.faceLabel': '{face} face',
   'stickers.sticker': '{face} face, row {row}, column {column}: {colour}',
   'stickers.palette': 'Colour',
@@ -63,7 +79,7 @@ const en = {
   'stickers.clear': 'Clear',
   'stickers.missing': 'Stickers left to fill in: {count}',
   'stickers.valid': 'The state is valid and ready to solve.',
-  'stickers.error.colour-count': '{colour}: {count} stickers instead of {expected}',
+  'stickers.error.colour-count': '{colour} stickers: {count} instead of {expected}',
   'stickers.error.invalid-corner': 'Corner {position}: no corner has these colours',
   'stickers.error.mirrored-corner':
     'Corner {position}: the colours go in mirror order, so one of its stickers is wrong',
@@ -77,7 +93,7 @@ const en = {
   'stickers.error.parity':
     'Two pieces are swapped. Check the stickers; if they are right, the cube was reassembled wrongly and cannot be solved without taking it apart.',
   'stickers.error.other': 'These stickers do not describe a cube.',
-  'stickers.error4.centre-count': '{colour}: {count} centre stickers instead of 4',
+  'stickers.error4.centre-count': '{colour} centre stickers: {count} instead of 4',
   'stickers.error4.invalid-corner': 'No corner has the colours of the highlighted one.',
   'stickers.error4.mirrored-corner':
     'The highlighted corner shows its colours in mirror order, so one of its stickers is wrong.',
@@ -260,6 +276,23 @@ const ru: Record<MessageKey, string> = {
   'stickers.hint4.D':
     'Из исходного положения наклоните низ к себе: к вам нижняя грань, сверху передняя.',
   'stickers.net': 'Развёртка кубика',
+  'camera.open': 'Сканировать камерой',
+  'camera.aim':
+    'Заполните сетку этой гранью. С камерой ноутбука поворачивайте грань к камере, а не к себе.',
+  'camera.starting': 'Включаю камеру…',
+  'camera.capture': 'Снять',
+  'camera.apply': 'Использовать цвета',
+  'camera.cancel': 'Отмена',
+  'camera.faces': 'Грани',
+  'camera.face': 'Снять грань: {face}',
+  'camera.progress': 'Снято граней: {count} из 6',
+  'camera.note':
+    'Лучше всего — ровный дневной свет. После сканирования проверьте наклейки и исправьте ошибки кликом: чаще всего путаются красный и оранжевый.',
+  'camera.error.denied': 'Браузеру не разрешён доступ к камере.',
+  'camera.error.missing': 'Камера не найдена.',
+  'camera.error.unsupported':
+    'Этот браузер не может использовать камеру на этой странице (нужен HTTPS).',
+  'camera.error.failed': 'Камера не запустилась: {message}',
   'stickers.faceLabel': '{face} грань',
   'stickers.sticker': '{face} грань, ряд {row}, столбец {column}: {colour}',
   'stickers.palette': 'Цвет',
@@ -283,7 +316,7 @@ const ru: Record<MessageKey, string> = {
   'stickers.error.parity':
     'Две детали поменяны местами. Проверьте наклейки; если они верны, кубик собран неправильно и без разборки не решается.',
   'stickers.error.other': 'Эти наклейки не описывают кубик.',
-  'stickers.error4.centre-count': '{colour}: центральных наклеек {count} вместо 4',
+  'stickers.error4.centre-count': '{colour} — центральных наклеек: {count} вместо 4',
   'stickers.error4.invalid-corner': 'Угла с цветами выделенного не бывает.',
   'stickers.error4.mirrored-corner':
     'Цвета выделенного угла идут в зеркальном порядке, значит, одна из его наклеек неверна.',

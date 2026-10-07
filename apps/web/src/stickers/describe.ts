@@ -73,3 +73,19 @@ export function describeCube4Error(error: Cube4Error, t: I18n['t']): string {
       return t('stickers.error.other');
   }
 }
+
+/** The colour on top while a face is held towards you, as the hints describe. */
+const HOLD_TOP: Readonly<Record<Face, Face>> = { U: 'B', R: 'U', F: 'U', D: 'F', L: 'U', B: 'U' };
+
+/**
+ * How to hold the cube to show a face. A 3×3×3 is held by its fixed centres; a 4×4×4 has none,
+ * so its hints name positions instead of colours.
+ */
+export function holdHint(face: Face, size: 3 | 4, t: I18n['t']): string {
+  return size === 3
+    ? t(`stickers.hint.${face}`, {
+        facing: colourName(face, t),
+        top: colourName(HOLD_TOP[face], t),
+      })
+    : t(`stickers.hint4.${face}`);
+}
