@@ -184,7 +184,7 @@ const en = {
 
   'guide.hold': 'Hold the cube with the {top} centre on top and the {front} centre facing you.',
   'guide.hold4':
-    'Hold the cube the way you held it to scramble it or to enter its first face: the picture shows that front towards you.',
+    'Hold the cube with the {top}–{front}–{right} corner at the top front right: {top} on top, {front} facing you, {right} on the right.',
   'guide.start': 'Make the moves on your cube one at a time and press Next after each.',
   'guide.step': 'Move {n} of {total}',
   'guide.face.U': 'Top face',
@@ -451,7 +451,7 @@ const ru: Record<MessageKey, string> = {
 
   'guide.hold': 'Держите кубик: {top} центр сверху, {front} — к себе.',
   'guide.hold4':
-    'Держите кубик так же, как при скрамбле или вводе первой грани: на картинке эта сторона смотрит на вас.',
+    'Держите кубик так, чтобы угол {top}–{front}–{right} был сверху спереди справа: {top} сверху, {front} к вам, {right} справа.',
   'guide.start': 'Делайте ходы на своём кубике по одному и после каждого нажимайте «Дальше».',
   'guide.step': 'Ход {n} из {total}',
   'guide.face.U': 'Верхняя грань',

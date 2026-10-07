@@ -1,4 +1,4 @@
-import { formatMove, rotateFace, toMove, type Face, type LayerTurn } from '@cube/core';
+import { formatMove, isFace, rotateFace, toMove, type Face, type LayerTurn } from '@cube/core';
 
 /** What a person needs to make a move on a cube in their hands. */
 export interface MoveGuide {
@@ -29,4 +29,20 @@ export function describeMove(turn: LayerTurn, size: number): MoveGuide {
     reference,
     towards: rotateFace(reference, turn.face, turn.turns),
   };
+}
+
+/**
+ * The colours of the corner at the top front right of an N×N×N in facelet order: a hold anyone
+ * can find on a cube without fixed centres. The corner is the last sticker of U, the first of R
+ * and the last of F's first row.
+ */
+export function holdCorner(
+  stickers: string,
+  size: number,
+): { readonly top: Face; readonly front: Face; readonly right: Face } | null {
+  const perFace = size * size;
+  const top = stickers.charAt(perFace - 1);
+  const right = stickers.charAt(perFace);
+  const front = stickers.charAt(2 * perFace + size - 1);
+  return isFace(top) && isFace(right) && isFace(front) ? { top, front, right } : null;
 }

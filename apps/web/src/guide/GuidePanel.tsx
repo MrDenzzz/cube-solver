@@ -4,7 +4,7 @@ import { nextMove, type Playback, type PlaybackAction } from '../playback/playba
 import { colourName } from '../stickers/describe.ts';
 import { cx } from '../ui/cx.ts';
 import ui from '../ui/ui.module.css';
-import { describeMove, type MoveGuide } from './guide.ts';
+import { describeMove, holdCorner, type MoveGuide } from './guide.ts';
 import styles from './GuidePanel.module.css';
 
 function layerName(guide: MoveGuide, t: I18n['t']): string {
@@ -36,14 +36,21 @@ export function GuidePanel({
   const next = nextMove(playback);
   const guide = next === null ? null : describeMove(next, playback.size);
   const busy = playback.animating !== null;
+  // A 3×3×3 is held by its centres; a 4×4×4 has none, so by the corner at the top front right.
+  const corner = playback.size === 3 ? null : holdCorner(playback.start, playback.size);
+  const hold =
+    corner === null
+      ? t('guide.hold', { top: colourName('U', t), front: colourName('F', t) })
+      : t('guide.hold4', {
+          top: colourName(corner.top, t),
+          front: colourName(corner.front, t),
+          right: colourName(corner.right, t),
+        });
 
   return (
     <section className={styles.guide}>
       <p className={ui.muted}>
-        {/* A 4×4×4 has no fixed centres to hold it by. */}
-        {playback.size === 3
-          ? t('guide.hold', { top: colourName('U', t), front: colourName('F', t) })
-          : t('guide.hold4')}
+        {hold}
         {position === 0 && ` ${t('guide.start')}`}
       </p>
       <div className={styles.step} aria-live="polite">

@@ -27,5 +27,7 @@ test('solves a random 4×4×4 state with wide turns in the guide', async ({ page
   await expect(page.getByLabel(/Moves in WCA notation/)).not.toHaveValue('');
   await page.getByRole('button', { name: 'Solve', exact: true }).click();
   await expect(page.getByText(/moves found in .*: reduction/)).toBeVisible();
-  await expect(page.getByText(/Hold the cube the way you held it/)).toBeVisible();
+  await expect(
+    page.getByText(/Hold the cube with the \w+–\w+–\w+ corner at the top front right/),
+  ).toBeVisible();
 });
