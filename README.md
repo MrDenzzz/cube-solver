@@ -1,5 +1,8 @@
 # cube-solver
 
+[![CI](https://github.com/MrDenzzz/cube-solver/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MrDenzzz/cube-solver/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A Rubik's cube solver for the 3×3×3 and the 4×4×4 that runs entirely in the browser and is made
 to be used with a real cube: describe the cube by a scramble, by its stickers or with the camera,
 get a solution, and follow it move by move, with arrows on a 3D cube and plain instructions such
