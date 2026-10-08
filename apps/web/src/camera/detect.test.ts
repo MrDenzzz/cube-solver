@@ -55,6 +55,24 @@ describe('finding a face in the picture', () => {
     });
   }
 
+  it('fills in neighbours whose seams the camera blurred into one patch', () => {
+    // Three reds in an L with no seam between them, as a webcam blurs red next to orange: a
+    // patch of no sticker's shape, found by the lattice of the other six.
+    const letters = 'UFBRRDRLF';
+    const face = { letters, size: 3, x: 110, y: 60, side: 180, stickerless: true };
+    const picture = drawFace(WIDTH, HEIGHT, face, () => 0, CLUTTER);
+    const paint = (x: number, y: number, width: number, height: number) => {
+      for (let row = y; row < y + height; row++) {
+        for (let column = x; column < x + width; column++) {
+          picture.data.set(SEEN.R, (row * WIDTH + column) * 4);
+        }
+      }
+    };
+    paint(112, 122, 116, 56);
+    paint(112, 122, 56, 116);
+    expect(readsAs(detectFace(picture, 3)?.cells, letters, 3)).toBe(true);
+  });
+
   it('does not take part of a 4×4×4 face for a 3×3×3 one', () => {
     const face = { letters: 'URFDLBUFRDDBLLUR', size: 4, x: 100, y: 50, side: 200 };
     expect(detectFace(drawFace(WIDTH, HEIGHT, face), 3)).toBeNull();

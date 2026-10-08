@@ -24,9 +24,14 @@
   seams between pieces are not dark). Patches shaped like a filled rectangle or disc and roughly
   square are stickers; a run of k pieces of one colour whose seams were too faint, k times as
   long as wide and k times a sticker's area, is cut into k. A size × size lattice is then looked
-  for among them, seeded by every patch and each of its near neighbours, with one sticker
-  allowed missing; a lattice with stickers beyond its sides is part of a larger face and refused,
-  so a 4×4×4 is not read as a 3×3×3. The lattice is fitted by least squares, which takes in a
+  for among them, seeded by every patch and each of its near neighbours; a lattice with stickers
+  beyond its sides is part of a larger face and refused, so a 4×4×4 is not read as a 3×3×3. A
+  webcam blurs the seam between pieces of similar colour: on the first real frame, from a
+  Logitech C270, an orange centre ran into the two reds beside it as one L-shaped patch of no
+  sticker's shape, and with only one sticker allowed missing the face was never found. So a
+  lattice needs 55 % of its stickers found (5 of 9, 9 of 16), in every row and column so that
+  they pin it to the face, and each sticker it fills in must lie in a patch no larger than the
+  missing stickers together, not in the background or on a seam, and read as one even colour. The lattice is fitted by least squares, which takes in a
   slight perspective, and each sticker's middle is read as the per-channel median, which ignores
   glare. The face is read as it appears on screen, rows left to right; the preview is not
   mirrored. On a photo of the author's two stickerless cubes this found all 16 and all 9 pieces
@@ -46,16 +51,30 @@
   (8 a second) whose colours agree, in any rotation, about 0.4 s of holding still. A face matching
   one already taken, in any rotation, is not taken again. While searching, the found face is
   outlined and each sticker marked in the colour it will most likely be named, from everything
-  seen so far. A button takes the found face at once, and a tap on a thumbnail removes it.
+  seen so far. A button takes the found face at once, even one that looks taken already, and a
+  tap on a thumbnail removes it. With `?debug` in the address the camera's frame can be saved,
+  to collect real frames for tests.
 - **Colour difference.** Samples are compared in CIELAB (D65) with CIEDE2000, which weighs hue
   differences among saturated colours more than plain Lab distance does. The implementation
   reproduces all 34 test pairs of Sharma, Wu and Dalal to four decimals [sharma].
-- **Naming the colours.** Only after all six faces: the samples are split into six groups of
+- **Correcting the camera.** The C270 exposed for a bright window behind the cube: white came
+  out mid-grey (116, 113, 110) and yellow olive (115, 107, 0), and the stickers shown while
+  scanning were named green. A webcam's exposure and white balance are, to a good approximation,
+  a gain on each channel of linear light, so three gains are fitted to everything seen so far:
+  each sample is matched to the nearest sticker colour, the gains set by least squares to bring
+  the samples onto their colours, and the two repeated eight times, from three starting
+  exposures, keeping the fit nearest to the colours. The gains may differ by at most 2.5 times,
+  more than a camera's cast, so a red face alone is not fitted to orange.
+- **Colours as a camera sees them.** Stickers are named by colours read off real plastic, not by
+  the scheme's display colours: a camera's red is nearer the display orange than the display
+  red, its yellow leans to green and its blue is lighter. The six were measured on two cameras
+  and three cubes.
+- **Naming the colours.** Only after all six faces, on the corrected colours: the samples are split into six groups of
   exactly N² each (closest pairs first, then swaps between groups while they lower the total
   difference), and each group's reference moves to the mean of its members, four rounds in all.
   On the 3×3×3 each picture's centre starts a group and stays in it, so the light's colour cast
-  cancels out and the six centres are always different. The 4×4×4 starts from the scheme's
-  display colours. Either way the groups are named by the permutation of the six colours with
+  cancels out and the six centres are always different. The 4×4×4 starts from the camera
+  colours. Either way the groups are named by the permutation of the six colours with
   the least total difference.
 - **Placing the pictures.** A backtracking search puts them on the cube one at a time and checks
   each piece as soon as all its stickers are down: a corner must exist and not be mirrored, an
@@ -97,14 +116,22 @@
 - End to end: Chrome's fake camera plays rendered videos of a 3×3×3 and a 4×4×4 brought into the
   grid face by face, in a mixed order and rotation. Both scans finish by themselves in about 15 s
   of video and give the exact stickers, on a desktop and a phone viewport.
-- Not yet measured on real cubes, cameras and light; the Pixel test phone is the next check.
+- Real frames: one from the C270 (a stickerless 3×3×3 held against a window) and a phone photo
+  of a stickerless 4×4×4 and 3×3×3 under a lamp. Before these changes the webcam face was not
+  found, and its stickers, read by the display colours, came out three of nine wrong; now the face
+  is found in about 15 ms and all 9 + 16 + 9 stickers are named right, each picture alone or with the
+  others from its camera. `colour.test.ts` keeps the measured colours (not the pictures). Three
+  pictures from two cameras are few; frames saved with `?debug` are the way to add more.
 
 ## Consequences
 
 - Balancing makes a single misread sticker show up as a swap between two colours, which the
   placement and the editor's piece checks usually catch, rather than as a wrong colour count.
-- A stickerless cube whose pieces show no dark gaps would not be taken by itself; the button
-  still takes it.
+- A stickerless cube whose pieces show no dark gaps at all would not be taken by itself; the
+  button still takes it.
+- The camera colours are a measurement on two cameras; a camera that reads very differently
+  still gets the full scan right on the 3×3×3, whose centres start the groups, but may show some
+  stickers in the wrong colour while scanning.
 - Without a camera (or without HTTPS) the editor stays as it was; a photo upload fallback could
   reuse the same reading but is not built.
 

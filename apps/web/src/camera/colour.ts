@@ -2,6 +2,8 @@ import { FACES, type Face } from '@cube/core';
 
 /** CIELAB under D65: lightness 0–100 and the two opponent axes. */
 export type Lab = readonly [number, number, number];
+/** 8-bit sRGB, as a camera gives it. */
+export type Rgb = readonly [number, number, number];
 
 const linear = (channel: number) => {
   const c = channel / 255;
@@ -15,9 +17,11 @@ const f = (t: number) => (t > EPSILON ? Math.cbrt(t) : t / (3 * (6 / 29) ** 2) +
 
 /** 8-bit sRGB to CIELAB (IEC 61966-2-1 transfer curve, CIE 15 definition of L*a*b*). */
 export function srgbToLab(red: number, green: number, blue: number): Lab {
-  const r = linear(red);
-  const g = linear(green);
-  const b = linear(blue);
+  return linearToLab(linear(red), linear(green), linear(blue));
+}
+
+/** Linear-light sRGB, 1 being full scale, to CIELAB. */
+function linearToLab(r: number, g: number, b: number): Lab {
   const x = (0.4124564 * r + 0.3575761 * g + 0.1804375 * b) / WHITE[0];
   const y = (0.2126729 * r + 0.7151522 * g + 0.072175 * b) / WHITE[1];
   const z = (0.0193339 * r + 0.119192 * g + 0.9503041 * b) / WHITE[2];
@@ -85,15 +89,19 @@ export function ciede2000([l1, a1, b1]: Lab, [l2, a2, b2]: Lab): number {
  * Typical sticker colours, to start from and to name groups by when nothing better is known:
  * the scheme's own display colours.
  */
-export function paletteLab(colours: Readonly<Record<Face, string>>): Record<Face, Lab> {
-  const lab = {} as Record<Face, Lab>;
+export function paletteRgb(colours: Readonly<Record<Face, string>>): Record<Face, Rgb> {
+  const rgb = {} as Record<Face, Rgb>;
   for (const face of FACES) {
     const hex = colours[face];
-    lab[face] = srgbToLab(
-      Number.parseInt(hex.slice(1, 3), 16),
-      Number.parseInt(hex.slice(3, 5), 16),
-      Number.parseInt(hex.slice(5, 7), 16),
-    );
+    rgb[face] = [1, 3, 5].map((at) => Number.parseInt(hex.slice(at, at + 2), 16)) as unknown as Rgb;
+  }
+  return rgb;
+}
+
+export function paletteLab(colours: Readonly<Record<Face, string>>): Record<Face, Lab> {
+  const lab = {} as Record<Face, Lab>;
+  for (const [face, [r, g, b]] of Object.entries(paletteRgb(colours))) {
+    lab[face as Face] = srgbToLab(r, g, b);
   }
   return lab;
 }
@@ -216,29 +224,83 @@ const nearest = (sample: Lab, references: readonly Lab[]) => {
   return best;
 };
 
+/** Rounds of fitting the gains to the colours the samples are nearest to. */
+const GAIN_ROUNDS = 8;
 /**
- * Six references for showing stickers before all six faces are in: from the palette, each moved
- * to the mean of the samples nearest to it a few times, and named like the final groups. It
- * keeps the light's colour cast out of what is shown, so a red that the camera sees as brown is
- * shown red.
+ * The largest ratio between two channels' gains. A camera's colour cast stays well within it; a
+ * larger one means the samples were fitted to the wrong colours, say a red face to orange.
  */
-export function provisionalReferences(
-  samples: readonly Lab[],
-  palette: Readonly<Record<Face, Lab>>,
-): Readonly<Record<Face, Lab>> {
-  let references: Lab[] = FACES.map((face) => palette[face]);
-  for (let round = 0; round < 4; round++) {
-    const groups: Lab[][] = references.map(() => []);
-    for (const sample of samples) groups[nearest(sample, references)]?.push(sample);
-    references = references.map((r, g) => {
-      const members = groups[g] ?? [];
-      return members.length > 0 ? mean(members) : r;
+const MAX_CAST = 2.5;
+
+type Linear = readonly [number, number, number];
+
+const toLinear = ([r, g, b]: Rgb): Linear => [linear(r), linear(g), linear(b)];
+/** Relative luminance (the Y of XYZ) of linear sRGB. */
+const luminance = ([r, g, b]: Linear) => 0.2126729 * r + 0.7151522 * g + 0.072175 * b;
+
+/**
+ * Maps the camera's colours to how the stickers would look under daylight at the palette's
+ * brightness. A webcam often exposes for a bright window behind the cube, so that white comes
+ * out mid-grey and yellow olive, and its white balance can leave a cast; both are, to a good
+ * approximation, a gain on each channel of linear light. The gains are fitted to the samples:
+ * each sample is matched to the palette colour it is nearest to, the gains set by least squares
+ * to bring the samples onto their colours, and the two repeated. Of a few starting exposures the
+ * fit that ends nearest to the palette is kept. With samples of several colours the gains are
+ * well determined; a single colour alone is not (dim orange and bright red look alike), which is
+ * why all the faces seen so far are fitted together.
+ */
+export function correction(
+  samples: readonly Rgb[],
+  palette: Readonly<Record<Face, Rgb>>,
+): (rgb: Rgb) => Lab {
+  const seen = samples.map(toLinear);
+  const targets = FACES.map((face) => toLinear(palette[face]));
+  const targetLabs = targets.map((t) => linearToLab(...t));
+  const apply = (s: Linear, gains: Linear): Lab =>
+    linearToLab(s[0] * gains[0], s[1] * gains[1], s[2] * gains[2]);
+  const nearestTarget = (lab: Lab) => {
+    let best = 0;
+    let distance = Number.POSITIVE_INFINITY;
+    targetLabs.forEach((t, k) => {
+      const d = Math.hypot(lab[0] - t[0], lab[1] - t[1], lab[2] - t[2]);
+      if (d < distance) {
+        best = k;
+        distance = d;
+      }
     });
-  }
-  const names = nameGroups(references, palette);
-  const named = {} as Record<Face, Lab>;
-  references.forEach((r, g) => (named[FACES[names[g] ?? 0] ?? 'U'] = r));
-  return named;
+    return { best, distance };
+  };
+  const fit = (start: number) => {
+    let gains: Linear = [start, start, start];
+    for (let round = 0; round < GAIN_ROUNDS; round++) {
+      const assigned = seen.map((s) => targets[nearestTarget(apply(s, gains)).best] ?? s);
+      const raw = [0, 1, 2].map((c) => {
+        let num = 0;
+        let den = 0;
+        seen.forEach((s, i) => {
+          num += (s[c] ?? 0) * (assigned[i]?.[c] ?? 0);
+          den += (s[c] ?? 0) ** 2;
+        });
+        return den > 0 ? num / den : (gains[c] ?? start);
+      });
+      const mean = Math.cbrt(raw.reduce((p, g) => p * Math.max(g, 1e-9), 1));
+      const limit = Math.sqrt(MAX_CAST);
+      gains = raw.map((g) =>
+        Math.min(mean * limit, Math.max(mean / limit, g)),
+      ) as unknown as Linear;
+    }
+    const cost = seen.reduce((sum, s) => sum + nearestTarget(apply(s, gains)).distance, 0);
+    return { gains, cost };
+  };
+  const white = luminance(toLinear(palette.U));
+  const brightness = seen.map(luminance).sort((a, b) => a - b);
+  const brightest = brightness[brightness.length - 1] ?? 0;
+  const middle = brightness[Math.floor(brightness.length / 2)] ?? 0;
+  const middleTarget = targets.map(luminance).sort((a, b) => a - b)[3] ?? 0;
+  // As seen; with the brightest sticker taken for white; with the middle one at the palette's middle.
+  const starts = [1, brightest > 0 ? white / brightest : 1, middle > 0 ? middleTarget / middle : 1];
+  const best = starts.map(fit).reduce((a, b) => (b.cost < a.cost ? b : a));
+  return (rgb) => apply(toLinear(rgb), best.gains);
 }
 
 /** The colour whose reference is closest to a sample. */

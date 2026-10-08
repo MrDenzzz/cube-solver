@@ -6,7 +6,10 @@ import { sampleAt, type CellColour, type Pixels } from './sample.ts';
 // are not dark): the picture is split along both, the sticker-shaped patches kept, and a
 // size × size lattice looked for among them, seeded by every patch and each of its near
 // neighbours. The lattice is then fitted to all its patches by least squares, which also takes
-// in a slight perspective, and each sticker is read at its fitted centre.
+// in a slight perspective, and each sticker is read at its fitted centre. A webcam blurs the seam
+// between pieces of similar colour, red and orange say, so neighbours can merge into one patch
+// of no sticker's shape: a lattice needs only most of its stickers found, as long as they reach
+// every row and column, and each sticker it fills in must read as one even colour.
 
 export type Point = readonly [number, number];
 
@@ -25,8 +28,10 @@ interface Patch {
   readonly area: number;
 }
 
-/** A patch must be found for all but this many stickers; a glare spot can hide one. */
+/** Stickers whose middle may vary too much to be one sticker; a glare spot can spoil one. */
 const MISSING = 1;
+/** The share of a face's stickers that must be found as patches; the lattice fills in the rest. */
+const FOUND = 0.55;
 /** How far, in lattice steps, a patch may lie from a lattice point and still count. */
 const TOLERANCE = 0.22;
 /** Patches whose areas differ by more than this factor are not stickers of one face. */
@@ -113,18 +118,26 @@ interface Region extends Patch {
   readonly angle: number;
 }
 
+/** The picture split into regions between barriers. */
+interface Segmentation {
+  readonly regions: readonly Region[];
+  /** Each pixel's region, -1 on a barrier. */
+  readonly labels: Int32Array;
+}
+
 /** The connected regions between barriers, with their shape moments. */
-function regions(pixels: Pixels, minArea: number, maxArea: number): Region[] {
+function segment(pixels: Pixels): Segmentation {
   const { width, height } = pixels;
   const barrier = barrierMask(pixels);
-  const seen = new Uint8Array(width * height);
+  const labels = new Int32Array(width * height).fill(-1);
   const stack = new Int32Array(width * height);
   const found: Region[] = [];
   for (let start = 0; start < width * height; start++) {
-    if (barrier[start] === 1 || seen[start] === 1) continue;
+    if (barrier[start] === 1 || labels[start] !== -1) continue;
+    const label = found.length;
     let top = 0;
     stack[top++] = start;
-    seen[start] = 1;
+    labels[start] = label;
     let area = 0;
     let sx = 0;
     let sy = 0;
@@ -142,13 +155,12 @@ function regions(pixels: Pixels, minArea: number, maxArea: number): Region[] {
       syy += y * y;
       sxy += x * y;
       for (const j of [i - 1, i + 1, i - width, i + width]) {
-        if (j < 0 || j >= width * height || seen[j] === 1 || barrier[j] === 1) continue;
+        if (j < 0 || j >= width * height || labels[j] !== -1 || barrier[j] === 1) continue;
         if ((j === i - 1 && x === 0) || (j === i + 1 && x === width - 1)) continue;
-        seen[j] = 1;
+        labels[j] = label;
         stack[top++] = j;
       }
     }
-    if (area < minArea || area > maxArea) continue;
     const x = sx / area;
     const y = sy / area;
     const cxx = sxx / area - x * x;
@@ -165,7 +177,7 @@ function regions(pixels: Pixels, minArea: number, maxArea: number): Region[] {
       angle: Math.atan2(2 * cxy, cxx - cyy) / 2,
     });
   }
-  return found;
+  return { regions: found, labels };
 }
 
 /**
@@ -175,10 +187,12 @@ function regions(pixels: Pixels, minArea: number, maxArea: number): Region[] {
  * them is cut into k along its long axis: such a region is k times as long as wide and k times
  * the area of a single sticker.
  */
-function stickerPatches(pixels: Pixels, size: number): Patch[] {
+function stickerPatches(pixels: Pixels, regions: readonly Region[], size: number): Patch[] {
   const short = Math.min(pixels.width, pixels.height);
   const unit = (short / size) ** 2;
-  const shaped = regions(pixels, (short * 0.03) ** 2, unit * size).filter((r) => {
+  const minArea = (short * 0.03) ** 2;
+  const shaped = regions.filter((r) => {
+    if (r.area < minArea || r.area > unit * size) return false;
     const fill = r.area / (12 * Math.sqrt(r.major * r.minor));
     return fill > 0.75 && fill < 1.3;
   });
@@ -256,7 +270,11 @@ function findLattice(patches: readonly Patch[], size: number): Lattice | null {
             const members = found.filter(
               (c) => c.i >= i0 && c.i < i0 + size && c.j >= j0 && c.j < j0 + size,
             );
-            if (members.length < size * size - MISSING) continue;
+            if (members.length < Math.ceil(FOUND * size * size)) continue;
+            // Found stickers in every row and column pin the window to the face.
+            const rows = new Set(members.map((c) => c.j));
+            const columns = new Set(members.map((c) => c.i));
+            if (rows.size < size || columns.size < size) continue;
             // A window inside a larger grid is part of a bigger face, such as a 4×4×4 when a
             // 3×3×3 is wanted.
             const outside = found.filter(
@@ -336,8 +354,21 @@ function fitAffine(members: Lattice['members']): { o: Point; u: Point; v: Point 
 
 /** The face in the picture, or null if there is none to read. */
 export function detectFace(pixels: Pixels, size: number): Detection | null {
-  const lattice = findLattice(stickerPatches(pixels, size), size);
+  const { regions, labels } = segment(pixels);
+  const lattice = findLattice(stickerPatches(pixels, regions, size), size);
   if (lattice === null) return null;
+  const missing = size * size - lattice.members.length;
+  const areas = lattice.members.map(({ p }) => p.area).sort((a, b) => a - b);
+  const typical = areas[Math.floor(areas.length / 2)] ?? 0;
+  /**
+   * Whether a sticker the lattice filled in lies in a patch that holds no more than the missing
+   * stickers, such as neighbours merged across a blurred seam, rather than in the background.
+   */
+  const filledIn = ([x, y]: Point) => {
+    const label = labels[Math.round(y) * pixels.width + Math.round(x)] ?? -1;
+    const area = regions[label]?.area ?? Number.POSITIVE_INFINITY;
+    return area <= (missing + 0.5) * typical;
+  };
   const { o, u, v } = fitAffine(lattice.members);
   // Read the face as it appears on screen: of the lattice's four quarter turns, the one whose
   // columns run most nearly left to right, rows below them.
@@ -357,17 +388,28 @@ export function detectFace(pixels: Pixels, size: number): Detection | null {
     centre[0] + (i - middle) * across[0] + (j - middle) * down[0],
     centre[1] + (i - middle) * across[1] + (j - middle) * down[1],
   ];
-  const half = Math.max(1, 0.18 * Math.min(Math.hypot(...u), Math.hypot(...v)));
+  const step = Math.min(Math.hypot(...u), Math.hypot(...v));
+  const half = Math.max(1, 0.18 * step);
   const centres: Point[] = [];
   const cells: CellColour[] = [];
+  let uneven = 0;
   for (let j = 0; j < size; j++) {
     for (let i = 0; i < size; i++) {
       const point = at(i, j);
+      if (point[0] < 0 || point[1] < 0 || point[0] >= pixels.width || point[1] >= pixels.height) {
+        return null;
+      }
+      const cell = sampleAt(pixels, point[0], point[1], half);
+      const found = lattice.members.some(
+        ({ p }) => Math.hypot(p.x - point[0], p.y - point[1]) < 0.35 * step,
+      );
+      if (!found && (cell.spread > MAX_SPREAD || !filledIn(point))) return null;
+      if (cell.spread > MAX_SPREAD) uneven++;
       centres.push(point);
-      cells.push(sampleAt(pixels, point[0], point[1], half));
+      cells.push(cell);
     }
   }
-  if (cells.filter((c) => c.spread > MAX_SPREAD).length > MISSING) return null;
+  if (uneven > MISSING) return null;
   const outline = [
     at(-0.5, -0.5),
     at(size - 0.5, -0.5),

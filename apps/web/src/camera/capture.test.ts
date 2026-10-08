@@ -9,7 +9,7 @@ import { drawFace, SEEN } from './synthetic.ts';
 const cells = (letters: string): CellColour[] =>
   letters.split('').map((f) => {
     const [r, g, b] = SEEN[f as Face];
-    return { lab: srgbToLab(r, g, b), css: '', spread: 0 };
+    return { rgb: [r, g, b], lab: srgbToLab(r, g, b), css: '', spread: 0 };
   });
 
 describe('reading a sticker', () => {

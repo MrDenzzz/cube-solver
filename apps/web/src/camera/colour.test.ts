@@ -9,8 +9,18 @@ import {
   type Face,
 } from '@cube/core';
 import { describe, expect, it } from 'vitest';
-import { FACE_COLOURS } from '../scheme.ts';
-import { ciede2000, classifyFaces, paletteLab, srgbToLab, type Lab } from './colour.ts';
+import { CAMERA_COLOURS, FACE_COLOURS } from '../scheme.ts';
+import {
+  ciede2000,
+  classifyFaces,
+  correction,
+  nearestFace,
+  paletteLab,
+  paletteRgb,
+  srgbToLab,
+  type Lab,
+  type Rgb,
+} from './colour.ts';
 import { SEEN } from './synthetic.ts';
 
 // Table I of G. Sharma, W. Wu, E. N. Dalal, "The CIEDE2000 Color-Difference Formula:
@@ -79,6 +89,122 @@ function photograph(facelets: string, seed: number): Lab[] {
 
 const PALETTE = paletteLab(FACE_COLOURS);
 
+/** Linear light at 35 % in red, 28 % in green and 18 % in blue: a dim room lit by a warm lamp. */
+function dim(colours: readonly Rgb[]): Rgb[] {
+  const gains = [0.35, 0.28, 0.18];
+  const encode = (v: number) =>
+    Math.round(255 * (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055));
+  return colours.map(
+    (rgb) =>
+      rgb.map((c, k) => {
+        const v = c / 255;
+        const lin = v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+        return encode(lin * (gains[k] ?? 1));
+      }) as unknown as Rgb,
+  );
+}
+
+describe('camera correction', () => {
+  // Faces as cameras gave them. Two of a stickerless 3×3×3 from a Logitech C270, exposed for a
+  // bright window behind the cube: white came out mid-grey and yellow olive.
+  const REAL: readonly (readonly [string, readonly Rgb[]])[] = [
+    [
+      'LDRBBURDF',
+      [
+        [144, 64, 3],
+        [118, 114, 0],
+        [101, 23, 4],
+        [0, 30, 82],
+        [0, 30, 84],
+        [113, 116, 113],
+        [83, 12, 0],
+        [101, 104, 0],
+        [3, 67, 9],
+      ],
+    ],
+    [
+      'DUFRLRRFF',
+      [
+        [115, 107, 0],
+        [116, 113, 110],
+        [19, 72, 15],
+        [98, 12, 0],
+        [143, 56, 0],
+        [89, 20, 1],
+        [83, 8, 0],
+        [1, 63, 4],
+        [4, 62, 5],
+      ],
+    ],
+    // A stickerless 4×4×4 and 3×3×3 under a lamp, from a phone: a light blue among them.
+    [
+      'UFRDFLRLUURDFLBL',
+      [
+        [196, 191, 160],
+        [81, 170, 10],
+        [214, 43, 33],
+        [209, 201, 4],
+        [81, 151, 25],
+        [233, 110, 1],
+        [196, 37, 34],
+        [211, 104, 0],
+        [198, 183, 162],
+        [203, 191, 170],
+        [201, 45, 40],
+        [191, 184, 5],
+        [85, 158, 22],
+        [225, 111, 0],
+        [1, 152, 177],
+        [216, 104, 0],
+      ],
+    ],
+    [
+      'FDRUBBRDL',
+      [
+        [39, 157, 57],
+        [218, 204, 6],
+        [204, 42, 31],
+        [210, 192, 158],
+        [30, 115, 173],
+        [1, 102, 157],
+        [207, 75, 47],
+        [219, 206, 4],
+        [231, 103, 1],
+      ],
+    ],
+  ];
+  const palette = paletteRgb(CAMERA_COLOURS);
+  const seenPalette = paletteLab(CAMERA_COLOURS);
+  const name = (samples: readonly Rgb[], correct: (rgb: Rgb) => Lab) =>
+    samples.map((s) => nearestFace(correct(s), seenPalette)).join('');
+
+  it('names real pictures right, one face alone or several together', () => {
+    for (const [letters, samples] of REAL) {
+      expect(name(samples, correction(samples, palette))).toBe(letters);
+    }
+    // Pictures from one camera, as a scan takes them.
+    for (const set of [REAL.slice(0, 2), REAL.slice(2)]) {
+      const correct = correction(
+        set.flatMap(([, samples]) => samples),
+        palette,
+      );
+      for (const [letters, samples] of set) expect(name(samples, correct)).toBe(letters);
+    }
+  });
+
+  it('takes out a warm cast and low exposure', () => {
+    const scrambled = applyAlgorithm(SOLVED, "R U R' U' F2 D L2 B' R2 U F'");
+    if (!scrambled.ok) throw new Error('bad scramble');
+    const facelets = toFacelets(scrambled.value);
+    const seen = dim(facelets.split('').map((f) => SEEN[f as Face]));
+    expect(name(seen, correction(seen, palette))).toBe(facelets);
+  });
+
+  it('leaves colours alone when there is nothing to fit', () => {
+    expect(correction([], palette)([200, 30, 40])).toEqual(srgbToLab(200, 30, 40));
+  });
+});
+
 /** The cube's faces as pictures taken in the order D, B, L, U, F, R. */
 const TAKEN = [3, 5, 4, 0, 2, 1];
 
@@ -114,6 +240,16 @@ describe('sticker classification', () => {
         expect(new Set(centres).size).toBe(6);
       }
     }
+  });
+
+  it('reads a 4×4×4 under a dim, warm light once the camera is corrected', () => {
+    const scrambled = applyAlgorithm4(SOLVED_4, "Rw U2 Fw' L 2R D' Uw2 B Rw' F2 3Uw r2 D Lw'");
+    if (!scrambled.ok) throw new Error('bad scramble');
+    const facelets = cube4ToFacelets(scrambled.value);
+    const seen = dim(facelets.split('').map((f) => SEEN[f as Face]));
+    const correct = correction(seen, paletteRgb(FACE_COLOURS));
+    const read = classifyFaces(faces(seen.map(correct), 4), 4, PALETTE);
+    expect(read).toEqual(faces(facelets.split(''), 4).map((f) => f.join('')));
   });
 
   it('reads a 4×4×4, which has no fixed centres, by the palette', () => {

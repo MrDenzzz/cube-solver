@@ -1,4 +1,4 @@
-import { srgbToLab, type Lab } from './colour.ts';
+import { srgbToLab, type Lab, type Rgb } from './colour.ts';
 
 /** RGBA pixels, as in ImageData. */
 export interface Pixels {
@@ -8,6 +8,8 @@ export interface Pixels {
 }
 
 export interface CellColour {
+  /** The sampled colour as the camera gave it. */
+  readonly rgb: Rgb;
   readonly lab: Lab;
   /** The sampled colour as CSS. */
   readonly css: string;
@@ -36,6 +38,7 @@ export function sampleAt(pixels: Pixels, cx: number, cy: number, half: number): 
   for (const values of channels) values.sort((a, b) => a - b);
   const [r, g, b] = channels.map((values) => quantile(values, 0.5)) as [number, number, number];
   return {
+    rgb: [r, g, b],
     lab: srgbToLab(r, g, b),
     css: `rgb(${String(r)} ${String(g)} ${String(b)})`,
     spread: Math.max(...channels.map((v) => quantile(v, 0.9) - quantile(v, 0.1))),

@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useI18n } from '../i18n/i18n.ts';
-import { FACE_COLOURS } from '../scheme.ts';
+import { CAMERA_COLOURS, FACE_COLOURS } from '../scheme.ts';
 import type { PuzzleSize } from '../stickers/stickers.ts';
 import { readStored, writeStored } from '../ui/storage.ts';
 import ui from '../ui/ui.module.css';
 import styles from './CameraPanel.module.css';
 import { IDLE, matchingFace, watch, type Verdict, type Watch } from './capture.ts';
-import { classifyFaces, nearestFace, paletteLab, provisionalReferences } from './colour.ts';
+import { classifyFaces, correction, nearestFace, paletteLab, paletteRgb } from './colour.ts';
 import { detectFace, type Detection } from './detect.ts';
 import { placeFaces } from './placement.ts';
 import type { CellColour } from './sample.ts';
@@ -99,6 +99,28 @@ function firstPicture(element: HTMLVideoElement): Promise<boolean> {
   });
 }
 
+/** With ?debug in the address the scan offers to save camera frames, to test the detector on. */
+const DEBUG = new URLSearchParams(location.search).has('debug');
+
+/** Downloads the camera's current frame at its full size, as a PNG. */
+function saveFrame(element: HTMLVideoElement) {
+  const frame = document.createElement('canvas');
+  frame.width = element.videoWidth;
+  frame.height = element.videoHeight;
+  frame.getContext('2d')?.drawImage(element, 0, 0);
+  frame.toBlob((blob) => {
+    if (blob === null) return;
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `cube-frame-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
+    link.click();
+    // Not at once: the download may not have read the blob yet.
+    setTimeout(() => {
+      URL.revokeObjectURL(link.href);
+    }, 10_000);
+  }, 'image/png');
+}
+
 const REASONS: Readonly<Record<string, 'denied' | 'missing' | 'busy'>> = {
   NotAllowedError: 'denied',
   SecurityError: 'denied',
@@ -149,7 +171,8 @@ export function CameraPanel({
   const watching = useRef<Watch>(IDLE);
   // The reading loop runs outside React's renders and needs the latest pictures.
   const takenNow = useRef(taken);
-  const palette = useMemo(() => paletteLab(FACE_COLOURS), []);
+  const palette = useMemo(() => paletteLab(CAMERA_COLOURS), []);
+  const paletteColours = useMemo(() => paletteRgb(CAMERA_COLOURS), []);
 
   useEffect(() => {
     let stream: MediaStream | undefined;
@@ -238,8 +261,12 @@ export function CameraPanel({
 
   const finish = useCallback(
     (faces: readonly (readonly CellColour[])[]) => {
+      const correct = correction(
+        faces.flat().map((c) => c.rgb),
+        paletteColours,
+      );
       const letters = classifyFaces(
-        faces.map((cells) => cells.map((c) => c.lab)),
+        faces.map((cells) => cells.map((c) => correct(c.rgb))),
         size,
         palette,
       );
@@ -247,13 +274,14 @@ export function CameraPanel({
       if (placed === null) setUnplaceable(true);
       else onApply({ stickers: placed.stickers, ambiguous: placed.ambiguous });
     },
-    [onApply, palette, size],
+    [onApply, palette, paletteColours, size],
   );
 
+  /** Takes a picture of a face, unless it is one taken already; `anyway` takes it regardless. */
   const take = useCallback(
-    (cells: readonly CellColour[]) => {
+    (cells: readonly CellColour[], anyway = false) => {
       const current = takenNow.current;
-      if (current.length >= 6 || matchingFace(cells, current, size) !== -1) return;
+      if (current.length >= 6 || (!anyway && matchingFace(cells, current, size) !== -1)) return;
       const next = [...current, cells];
       takenNow.current = next;
       setTaken(next);
@@ -290,16 +318,16 @@ export function CameraPanel({
     setUnplaceable(false);
   };
 
-  // Stickers are shown as one of the six colours, named from everything seen so far.
-  const references = useMemo(
+  // Stickers are shown as one of the six colours, the camera corrected by everything seen so far.
+  const correct = useMemo(
     () =>
-      provisionalReferences(
-        [...taken.flat(), ...(live?.detection?.cells ?? [])].map((c) => c.lab),
-        palette,
+      correction(
+        [...taken.flat(), ...(live?.detection?.cells ?? [])].map((c) => c.rgb),
+        paletteColours,
       ),
-    [taken, live, palette],
+    [taken, live, paletteColours],
   );
-  const shown = (cell: CellColour) => FACE_COLOURS[nearestFace(cell.lab, references)];
+  const shown = (cell: CellColour) => FACE_COLOURS[nearestFace(correct(cell.rgb), palette)];
   const found = live?.detection ?? null;
   const step =
     found === null
@@ -443,12 +471,25 @@ export function CameraPanel({
           className={ui.button}
           disabled={camera.kind !== 'live' || taken.length >= 6}
           onClick={() => {
+            // Asked for by hand: taken even if it looks like a face already taken.
             const cells = read()?.detection?.cells;
-            if (cells !== undefined) take(cells);
+            if (cells !== undefined) take(cells, true);
           }}
         >
           {t('camera.capture')}
         </button>
+        {DEBUG && (
+          <button
+            type="button"
+            className={ui.button}
+            disabled={camera.kind !== 'live'}
+            onClick={() => {
+              if (video.current !== null) saveFrame(video.current);
+            }}
+          >
+            {t('camera.saveFrame')}
+          </button>
+        )}
         <button type="button" className={ui.button} onClick={onClose}>
           {t('camera.cancel')}
         </button>
