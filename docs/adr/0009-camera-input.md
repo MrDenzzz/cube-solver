@@ -30,10 +30,13 @@
   Logitech C270, an orange centre ran into the two reds beside it as one L-shaped patch of no
   sticker's shape, and with only one sticker allowed missing the face was never found. So a
   lattice needs 55 % of its stickers found (5 of 9, 9 of 16), in every row and column so that
-  they pin it to the face, and each sticker it fills in must lie in a patch no larger than the
-  missing stickers together, not in the background or on a seam, and read as one even colour. The lattice is fitted by least squares, which takes in a
-  slight perspective, and each sticker's middle is read as the per-channel median, which ignores
-  glare. The face is read as it appears on screen, rows left to right; the preview is not
+  they pin it to the face, and most of each filled-in sticker's middle must lie in a patch no
+  larger than one more than the missing stickers, not in the background or on a seam. One
+  sticker in a face may read as no even colour, for glare or a logo: on a second C270 frame, of
+  a stickerless 4×4×4, four white pieces ran into one patch and the logo on one of them left its
+  centre uneven, which an earlier rule, that filled-in stickers read evenly, refused. The
+  lattice is fitted by least squares, which takes in a slight perspective, and each sticker's
+  middle is read as the per-channel median, which ignores glare. The face is read as it appears on screen, rows left to right; the preview is not
   mirrored. On a photo of the author's two stickerless cubes this found all 16 and all 9 pieces
   in 16 and 34 ms, colours in the right places; a fixed grid, the first design, never took a
   face by itself on that camera, since a face held by hand never lined up with it.
@@ -116,12 +119,13 @@
 - End to end: Chrome's fake camera plays rendered videos of a 3×3×3 and a 4×4×4 brought into the
   grid face by face, in a mixed order and rotation. Both scans finish by themselves in about 15 s
   of video and give the exact stickers, on a desktop and a phone viewport.
-- Real frames: one from the C270 (a stickerless 3×3×3 held against a window) and a phone photo
-  of a stickerless 4×4×4 and 3×3×3 under a lamp. Before these changes the webcam face was not
-  found, and its stickers, read by the display colours, came out three of nine wrong; now the face
-  is found in about 15 ms and all 9 + 16 + 9 stickers are named right, each picture alone or with the
-  others from its camera. `colour.test.ts` keeps the measured colours (not the pictures). Three
-  pictures from two cameras are few; frames saved with `?debug` are the way to add more.
+- Real frames: two from the C270 (a stickerless 3×3×3 and 4×4×4 held against a window) and a
+  phone photo of a stickerless 4×4×4 and 3×3×3 under a lamp. Before these changes neither webcam
+  face was found, and the 3×3×3's stickers, read by the display colours, came out three of nine
+  wrong; now each face is found in 15–20 ms, and all 9 + 16 + 16 + 9 stickers are named right.
+  `colour.test.ts` keeps the measured colours and `detect.test.ts` the two ways a face was
+  missed, redrawn (not the pictures). Four faces from two cameras are few; frames saved with
+  `?debug` are the way to add more.
 
 ## Consequences
 

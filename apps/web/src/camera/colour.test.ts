@@ -136,6 +136,28 @@ describe('camera correction', () => {
         [4, 62, 5],
       ],
     ],
+    // A stickerless 4×4×4 from the same webcam, its logo darkening a white centre.
+    [
+      'RBLBFUFRBFUUDUUL',
+      [
+        [108, 31, 37],
+        [39, 91, 124],
+        [164, 86, 16],
+        [41, 96, 122],
+        [58, 108, 26],
+        [124, 127, 133],
+        [58, 113, 19],
+        [101, 25, 29],
+        [27, 86, 114],
+        [52, 109, 16],
+        [83, 89, 91],
+        [119, 123, 125],
+        [111, 122, 0],
+        [107, 117, 120],
+        [109, 119, 120],
+        [132, 68, 2],
+      ],
+    ],
     // A stickerless 4×4×4 and 3×3×3 under a lamp, from a phone: a light blue among them.
     [
       'UFRDFLRLUURDFLBL',
@@ -183,7 +205,7 @@ describe('camera correction', () => {
       expect(name(samples, correction(samples, palette))).toBe(letters);
     }
     // Pictures from one camera, as a scan takes them.
-    for (const set of [REAL.slice(0, 2), REAL.slice(2)]) {
+    for (const set of [REAL.slice(0, 3), REAL.slice(3)]) {
       const correct = correction(
         set.flatMap(([, samples]) => samples),
         palette,

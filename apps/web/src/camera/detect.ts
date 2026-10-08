@@ -9,7 +9,7 @@ import { sampleAt, type CellColour, type Pixels } from './sample.ts';
 // in a slight perspective, and each sticker is read at its fitted centre. A webcam blurs the seam
 // between pieces of similar colour, red and orange say, so neighbours can merge into one patch
 // of no sticker's shape: a lattice needs only most of its stickers found, as long as they reach
-// every row and column, and each sticker it fills in must read as one even colour.
+// every row and column, and each sticker it fills in must lie in such a merged patch.
 
 export type Point = readonly [number, number];
 
@@ -28,7 +28,7 @@ interface Patch {
   readonly area: number;
 }
 
-/** Stickers whose middle may vary too much to be one sticker; a glare spot can spoil one. */
+/** Stickers whose middle may vary too much for one colour: a glare spot or a logo can spoil one. */
 const MISSING = 1;
 /** The share of a face's stickers that must be found as patches; the lattice fills in the rest. */
 const FOUND = 0.55;
@@ -362,12 +362,21 @@ export function detectFace(pixels: Pixels, size: number): Detection | null {
   const typical = areas[Math.floor(areas.length / 2)] ?? 0;
   /**
    * Whether a sticker the lattice filled in lies in a patch that holds no more than the missing
-   * stickers, such as neighbours merged across a blurred seam, rather than in the background.
+   * stickers, such as neighbours merged across a blurred seam, rather than in the background:
+   * the patch most of the sticker's middle belongs to, since a logo can cover its very centre.
    */
-  const filledIn = ([x, y]: Point) => {
-    const label = labels[Math.round(y) * pixels.width + Math.round(x)] ?? -1;
+  const filledIn = ([x, y]: Point, half: number) => {
+    const count = new Map<number, number>();
+    for (let py = Math.round(y - half); py <= y + half; py++) {
+      for (let px = Math.round(x - half); px <= x + half; px++) {
+        const label = labels[py * pixels.width + px] ?? -1;
+        if (label !== -1) count.set(label, (count.get(label) ?? 0) + 1);
+      }
+    }
+    let label = -1;
+    for (const [l, n] of count) if (n > (count.get(label) ?? 0)) label = l;
     const area = regions[label]?.area ?? Number.POSITIVE_INFINITY;
-    return area <= (missing + 0.5) * typical;
+    return area <= (missing + 1) * typical;
   };
   const { o, u, v } = fitAffine(lattice.members);
   // Read the face as it appears on screen: of the lattice's four quarter turns, the one whose
@@ -403,7 +412,7 @@ export function detectFace(pixels: Pixels, size: number): Detection | null {
       const found = lattice.members.some(
         ({ p }) => Math.hypot(p.x - point[0], p.y - point[1]) < 0.35 * step,
       );
-      if (!found && (cell.spread > MAX_SPREAD || !filledIn(point))) return null;
+      if (!found && !filledIn(point, half)) return null;
       if (cell.spread > MAX_SPREAD) uneven++;
       centres.push(point);
       cells.push(cell);

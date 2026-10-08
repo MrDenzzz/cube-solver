@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { detectFace } from './detect.ts';
 import { rotateGrid } from './placement.ts';
+import type { Pixels } from './sample.ts';
 import { drawFace, SEEN, type Clutter, type Rgb } from './synthetic.ts';
 
 const WIDTH = 400;
@@ -14,6 +15,15 @@ function readsAs(cells: readonly { css: string }[] | undefined, letters: string,
     const turned = rotateGrid(expected, size, t);
     return cells?.every((cell, i) => cell.css === turned[i]) ?? false;
   });
+}
+
+/** Paints a rectangle over a picture: a seam the camera blurred away, or a logo. */
+function paint(picture: Pixels, colour: Rgb, x: number, y: number, width: number, height: number) {
+  for (let row = y; row < y + height; row++) {
+    for (let column = x; column < x + width; column++) {
+      picture.data.set(colour, (row * picture.width + column) * 4);
+    }
+  }
 }
 
 const CLUTTER: readonly Clutter[] = [
@@ -61,16 +71,23 @@ describe('finding a face in the picture', () => {
     const letters = 'UFBRRDRLF';
     const face = { letters, size: 3, x: 110, y: 60, side: 180, stickerless: true };
     const picture = drawFace(WIDTH, HEIGHT, face, () => 0, CLUTTER);
-    const paint = (x: number, y: number, width: number, height: number) => {
-      for (let row = y; row < y + height; row++) {
-        for (let column = x; column < x + width; column++) {
-          picture.data.set(SEEN.R, (row * WIDTH + column) * 4);
-        }
-      }
-    };
-    paint(112, 122, 116, 56);
-    paint(112, 122, 56, 116);
+    paint(picture, SEEN.R, 112, 122, 116, 56);
+    paint(picture, SEEN.R, 112, 122, 56, 116);
     expect(readsAs(detectFace(picture, 3)?.cells, letters, 3)).toBe(true);
+  });
+
+  it('fills in a sticker with a logo among merged neighbours', () => {
+    // Four white pieces of a stickerless 4×4×4 run into one patch, as light seams between white
+    // pieces do on a webcam, and the logo on one of them leaves no even colour at its centre.
+    const letters = 'RBLBFUFRBFUUDUUL';
+    const face = { letters, size: 4, x: 100, y: 40, side: 220, stickerless: true };
+    const picture = drawFace(WIDTH, HEIGHT, face, () => 0, CLUTTER);
+    paint(picture, SEEN.U, 212, 152, 106, 51);
+    paint(picture, SEEN.U, 157, 207, 106, 51);
+    paint(picture, SEEN.U, 212, 152, 51, 106);
+    paint(picture, [40, 40, 40], 228, 172, 8, 12);
+    paint(picture, [40, 40, 40], 239, 172, 8, 12);
+    expect(readsAs(detectFace(picture, 4)?.cells, letters, 4)).toBe(true);
   });
 
   it('does not take part of a 4×4×4 face for a 3×3×3 one', () => {
