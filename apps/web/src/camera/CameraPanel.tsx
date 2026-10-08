@@ -99,8 +99,22 @@ function firstPicture(element: HTMLVideoElement): Promise<boolean> {
   });
 }
 
-/** With ?debug in the address the scan offers to save camera frames, to test the detector on. */
+/**
+ * With ?debug in the address the scan offers to save camera frames, and saves each finished scan
+ * (the pictures as read, their colours and the result), to test the detector and naming on.
+ */
 const DEBUG = new URLSearchParams(location.search).has('debug');
+
+function download(blob: Blob, name: string, extension: string) {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `${name}-${new Date().toISOString().replace(/[:.]/g, '-')}.${extension}`;
+  link.click();
+  // Not at once: the download may not have read the blob yet.
+  setTimeout(() => {
+    URL.revokeObjectURL(link.href);
+  }, 10_000);
+}
 
 /** Downloads the camera's current frame at its full size, as a PNG. */
 function saveFrame(element: HTMLVideoElement) {
@@ -109,15 +123,7 @@ function saveFrame(element: HTMLVideoElement) {
   frame.height = element.videoHeight;
   frame.getContext('2d')?.drawImage(element, 0, 0);
   frame.toBlob((blob) => {
-    if (blob === null) return;
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `cube-frame-${new Date().toISOString().replace(/[:.]/g, '-')}.png`;
-    link.click();
-    // Not at once: the download may not have read the blob yet.
-    setTimeout(() => {
-      URL.revokeObjectURL(link.href);
-    }, 10_000);
+    if (blob !== null) download(blob, 'cube-frame', 'png');
   }, 'image/png');
 }
 
@@ -171,6 +177,8 @@ export function CameraPanel({
   const watching = useRef<Watch>(IDLE);
   // The reading loop runs outside React's renders and needs the latest pictures.
   const takenNow = useRef(taken);
+  // The pictures the taken faces were read from, kept with ?debug only.
+  const frames = useRef<readonly string[]>([]);
   const palette = useMemo(() => paletteLab(CAMERA_COLOURS), []);
   const paletteColours = useMemo(() => paletteRgb(CAMERA_COLOURS), []);
 
@@ -271,6 +279,23 @@ export function CameraPanel({
         palette,
       );
       const placed = placeFaces(letters, size);
+      if (DEBUG) {
+        const scan = {
+          size,
+          faces: faces.map((cells, i) => ({
+            rgb: cells.map((c) => c.rgb),
+            frame: frames.current[i] ?? null,
+          })),
+          letters,
+          stickers: placed?.stickers ?? null,
+          ambiguous: placed?.ambiguous ?? null,
+        };
+        download(
+          new Blob([JSON.stringify(scan)], { type: 'application/json' }),
+          'cube-scan',
+          'json',
+        );
+      }
       if (placed === null) setUnplaceable(true);
       else onApply({ stickers: placed.stickers, ambiguous: placed.ambiguous });
     },
@@ -285,6 +310,8 @@ export function CameraPanel({
       const next = [...current, cells];
       takenNow.current = next;
       setTaken(next);
+      // The picture just read, which the cells came from.
+      if (DEBUG) frames.current = [...frames.current, canvas.current?.toDataURL() ?? ''];
       if ('vibrate' in navigator) navigator.vibrate(60);
       if (next.length === 6) finish(next);
     },
@@ -314,6 +341,7 @@ export function CameraPanel({
   const remove = (index: number) => {
     const next = takenNow.current.filter((_, i) => i !== index);
     takenNow.current = next;
+    frames.current = frames.current.filter((_, i) => i !== index);
     setTaken(next);
     setUnplaceable(false);
   };

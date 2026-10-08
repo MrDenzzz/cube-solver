@@ -78,15 +78,15 @@ describe('finding a face in the picture', () => {
 
   it('fills in a sticker with a logo among merged neighbours', () => {
     // Four white pieces of a stickerless 4×4×4 run into one patch, as light seams between white
-    // pieces do on a webcam, and the logo on one of them leaves no even colour at its centre.
+    // pieces do on a webcam, and the logo on one of them covers most of its middle.
     const letters = 'RBLBFUFRBFUUDUUL';
     const face = { letters, size: 4, x: 100, y: 40, side: 220, stickerless: true };
     const picture = drawFace(WIDTH, HEIGHT, face, () => 0, CLUTTER);
     paint(picture, SEEN.U, 212, 152, 106, 51);
     paint(picture, SEEN.U, 157, 207, 106, 51);
     paint(picture, SEEN.U, 212, 152, 51, 106);
-    paint(picture, [40, 40, 40], 228, 172, 8, 12);
-    paint(picture, [40, 40, 40], 239, 172, 8, 12);
+    // As wide as most of the piece, as on the webcam: it covers most of the sticker's middle.
+    paint(picture, [40, 40, 40], 223, 170, 30, 16);
     expect(readsAs(detectFace(picture, 4)?.cells, letters, 4)).toBe(true);
   });
 

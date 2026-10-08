@@ -408,12 +408,16 @@ export function detectFace(pixels: Pixels, size: number): Detection | null {
       if (point[0] < 0 || point[1] < 0 || point[0] >= pixels.width || point[1] >= pixels.height) {
         return null;
       }
-      const cell = sampleAt(pixels, point[0], point[1], half);
+      const middle = sampleAt(pixels, point[0], point[1], half);
+      // A logo can cover all of a centre's middle: a square twice the size takes in enough of
+      // the sticker around it to be its dominant colour.
+      const cell =
+        middle.spread > MAX_SPREAD ? sampleAt(pixels, point[0], point[1], 2 * half) : middle;
       const found = lattice.members.some(
         ({ p }) => Math.hypot(p.x - point[0], p.y - point[1]) < 0.35 * step,
       );
       if (!found && !filledIn(point, half)) return null;
-      if (cell.spread > MAX_SPREAD) uneven++;
+      if (middle.spread > MAX_SPREAD) uneven++;
       centres.push(point);
       cells.push(cell);
     }

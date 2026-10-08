@@ -36,7 +36,11 @@
   a stickerless 4×4×4, four white pieces ran into one patch and the logo on one of them left its
   centre uneven, which an earlier rule, that filled-in stickers read evenly, refused. The
   lattice is fitted by least squares, which takes in a slight perspective, and each sticker's
-  middle is read as the per-channel median, which ignores glare. The face is read as it appears on screen, rows left to right; the preview is not
+  middle is read as the per-channel median of its dominant colour: the larger of a light and a
+  dark group, if their brightness differs by more than 30. A middle too uneven for one colour is
+  read again over a square twice the size. The logo on that 4×4×4 covered three quarters of its
+  centre's middle and pulled a plain median from white (124, 127, 133) to grey (83, 89, 91),
+  which the final grouping then named red; read this way it is white (118, 124, 124). The face is read as it appears on screen, rows left to right; the preview is not
   mirrored. On a photo of the author's two stickerless cubes this found all 16 and all 9 pieces
   in 16 and 34 ms, colours in the right places; a fixed grid, the first design, never took a
   face by itself on that camera, since a face held by hand never lined up with it.
@@ -56,7 +60,8 @@
   outlined and each sticker marked in the colour it will most likely be named, from everything
   seen so far. A button takes the found face at once, even one that looks taken already, and a
   tap on a thumbnail removes it. With `?debug` in the address the camera's frame can be saved,
-  to collect real frames for tests.
+  and a finished scan is saved with the pictures it was read from, to collect real frames for
+  tests.
 - **Colour difference.** Samples are compared in CIELAB (D65) with CIEDE2000, which weighs hue
   differences among saturated colours more than plain Lab distance does. The implementation
   reproduces all 34 test pairs of Sharma, Wu and Dalal to four decimals [sharma].
